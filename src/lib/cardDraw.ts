@@ -119,100 +119,92 @@ function tryAddImage(doc: jsPDF, dataUrl: string, fmt: "JPEG" | "PNG", x: number
   }
 }
 
-/* ============ TEMPLATE: VERTICAL CLASSIC ============ */
+/* ============ TEMPLATE: VERTICAL CLASSIC (simple/clean) ============ */
 function drawVerticalClassic({ doc, x, y, student, photo, mapping, design }: DrawCtx) {
-  const W = 54, H = 86;
+  const W = design.customWidth;
+  const H = design.customHeight;
   const rgb = hexToRgb(design.accentColor);
-  const light = lighten(rgb, 0.85);
 
   // Outer border
-  doc.setDrawColor(220);
+  doc.setDrawColor(200);
   doc.setLineWidth(0.2);
-  doc.roundedRect(x, y, W, H, 2, 2, "S");
+  doc.rect(x, y, W, H, "S");
 
-  // Top corner accent (large soft quarter)
-  doc.setFillColor(light[0], light[1], light[2]);
-  doc.circle(x + W, y, 22, "F");
-  doc.setFillColor(rgb[0], rgb[1], rgb[2]);
-  doc.circle(x, y, 14, "F");
-
-  // Logo top-left if any
+  // Header strip with logo + school name
+  const hdrH = 10;
+  doc.setDrawColor(220);
+  doc.line(x, y + hdrH, x + W, y + hdrH);
+  let textX = x + 2;
   if (design.logoDataUrl) {
-    tryAddImage(doc, design.logoDataUrl, "PNG", x + 2, y + 2, 8, 8);
+    tryAddImage(doc, design.logoDataUrl, "PNG", x + 1.5, y + 1.5, 7, 7);
+    textX = x + 10;
+  }
+  doc.setTextColor(20);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(7);
+  safeText(doc, design.schoolName.toUpperCase(), textX, y + 4, W - (textX - x) - 2, { maxLines: 1 });
+  if (design.schoolSubtitle) {
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(4.8);
+    doc.setTextColor(120);
+    safeText(doc, design.schoolSubtitle, textX, y + 7.5, W - (textX - x) - 2, { maxLines: 1 });
   }
 
   // Photo
-  const pw = 24, ph = 28;
+  const pw = Math.min(26, W - 12);
+  const ph = pw * 1.15;
   const px = x + (W - pw) / 2;
-  const py = y + 14;
-  doc.setFillColor(255, 255, 255);
-  doc.rect(px - 0.8, py - 0.8, pw + 1.6, ph + 1.6, "F");
-  doc.setDrawColor(rgb[0], rgb[1], rgb[2]);
-  doc.setLineWidth(0.6);
+  const py = y + hdrH + 3;
+  doc.setDrawColor(180);
+  doc.setLineWidth(0.3);
   doc.rect(px, py, pw, ph, "S");
   if (photo) tryAddImage(doc, photo.dataUrl, "JPEG", px, py, pw, ph);
 
   // Name
   const name = getValue(student, mapping, "name") || "—";
-  doc.setTextColor(20, 20, 20);
+  doc.setTextColor(20);
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(10);
-  safeText(doc, name.toUpperCase(), x + W / 2, py + ph + 4.5, W - 6, { align: "center", lineHeight: 3.6, maxLines: 1 });
-
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(5.5);
-  doc.setTextColor(rgb[0], rgb[1], rgb[2]);
-  doc.text("STUDENT IDENTITY CARD", x + W / 2, py + ph + 7.6, { align: "center" });
-
-  // Dashed divider
-  doc.setDrawColor(rgb[0], rgb[1], rgb[2]);
-  doc.setLineWidth(0.2);
-  drawDashedLine(doc, x + 4, py + ph + 9.5, x + W - 4, py + ph + 9.5, 0.5, 0.5);
+  doc.setFontSize(9);
+  safeText(doc, name, x + W / 2, py + ph + 4.5, W - 4, { align: "center", maxLines: 1 });
 
   // Fields
-  let fy = py + ph + 12.5;
+  let fy = py + ph + 8.5;
   const fields = design.visibleFields.filter((f) => f !== "name" && f !== "address");
   doc.setFontSize(6.2);
+  const footerH = 6;
   for (const f of fields) {
     const v = getValue(student, mapping, f);
     if (!v) continue;
-    if (fy > y + H - 16) break;
-    // bullet square
-    doc.setFillColor(rgb[0], rgb[1], rgb[2]);
-    doc.rect(x + 3, fy - 1.6, 1.2, 1.2, "F");
+    if (fy > y + H - footerH - 4) break;
     doc.setTextColor(120);
     doc.setFont("helvetica", "normal");
-    doc.text(FIELD_LABELS[f], x + 5.5, fy);
+    doc.text(FIELD_LABELS[f], x + 3, fy);
     doc.setTextColor(25);
     doc.setFont("helvetica", "bold");
-    doc.text(String(v), x + W - 3, fy, { align: "right", maxWidth: 26 });
-    fy += 3.5;
+    doc.text(String(v), x + W - 3, fy, { align: "right", maxWidth: W - 22 });
+    fy += 3.4;
   }
 
-  // Address (if present, multi-line)
+  // Address
   const addr = getValue(student, mapping, "address");
-  if (addr && design.visibleFields.includes("address") && fy < y + H - 14) {
+  if (addr && design.visibleFields.includes("address") && fy < y + H - footerH - 5) {
     doc.setFont("helvetica", "normal");
     doc.setTextColor(120);
     doc.setFontSize(5.5);
-    doc.text("ADDRESS", x + 3, fy);
+    doc.text("Address", x + 3, fy);
     doc.setTextColor(40);
     doc.setFontSize(5.8);
-    safeText(doc, addr, x + 3, fy + 2.6, W - 6, { lineHeight: 2.6, maxLines: 2 });
+    safeText(doc, addr, x + 3, fy + 2.4, W - 6, { lineHeight: 2.4, maxLines: 2 });
   }
 
-  // Footer band
-  const fbH = 9;
+  // Footer band — contact only (school name is in header now)
   doc.setFillColor(rgb[0], rgb[1], rgb[2]);
-  doc.rect(x, y + H - fbH, W, fbH, "F");
-  doc.setTextColor(255, 255, 255);
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(6.5);
-  safeText(doc, design.schoolName, x + W / 2, y + H - fbH + 3.5, W - 4, { align: "center", maxLines: 1 });
+  doc.rect(x, y + H - footerH, W, footerH, "F");
+  doc.setTextColor(255);
   doc.setFont("helvetica", "normal");
-  doc.setFontSize(4.8);
+  doc.setFontSize(5);
   const contact = [design.contactPhone, design.contactEmail].filter(Boolean).join("  ·  ");
-  if (contact) doc.text(contact, x + W / 2, y + H - fbH + 6.6, { align: "center" });
+  if (contact) doc.text(contact, x + W / 2, y + H - footerH + 3.8, { align: "center" });
 }
 
 /* ============ TEMPLATE: HORIZONTAL CLASSIC ============ */
