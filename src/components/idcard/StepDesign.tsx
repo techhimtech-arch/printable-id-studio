@@ -13,6 +13,7 @@ const TEMPLATES: { key: CardTemplate; label: string; desc: string }[] = [
   { key: "horizontal-classic", label: "Horizontal · Classic", desc: "Header band, fields + photo, stripes" },
   { key: "vertical-modern", label: "Vertical · Modern", desc: "Solid header, clean rules" },
   { key: "horizontal-modern", label: "Horizontal · Modern", desc: "Accent sidebar, minimalist body" },
+  { key: "custom", label: "Custom · Your design", desc: "Upload background, drag fields freely" },
 ];
 
 function TemplateThumb({ tpl, active, accent, onClick }: { tpl: CardTemplate; active: boolean; accent: string; onClick: () => void }) {
