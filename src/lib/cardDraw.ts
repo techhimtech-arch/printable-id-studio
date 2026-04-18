@@ -459,6 +459,77 @@ function drawHorizontalModern({ doc, x, y, student, photo, mapping, design }: Dr
   doc.line(x + sbW + 3, y + H - 2.5, x + W - 3, y + H - 2.5);
 }
 
+/* ============ TEMPLATE: CUSTOM (drag-and-drop) ============ */
+function drawCustomTemplate({ doc, x, y, student, photo, mapping, design }: DrawCtx) {
+  const W = design.customWidth;
+  const H = design.customHeight;
+
+  // Optional outer hairline
+  doc.setDrawColor(220);
+  doc.setLineWidth(0.15);
+  doc.rect(x, y, W, H, "S");
+
+  // Background image
+  if (design.customBgDataUrl) {
+    tryAddImage(doc, design.customBgDataUrl, "JPEG", x, y, W, H);
+  }
+
+  for (const el of design.customElements) {
+    const ex = x + el.x;
+    const ey = y + el.y;
+
+    if (el.kind === "photo") {
+      if (photo) tryAddImage(doc, photo.dataUrl, "JPEG", ex, ey, el.w, el.h);
+      else {
+        doc.setDrawColor(180);
+        doc.setLineWidth(0.2);
+        doc.rect(ex, ey, el.w, el.h, "S");
+      }
+      continue;
+    }
+    if (el.kind === "logo") {
+      if (design.logoDataUrl) tryAddImage(doc, design.logoDataUrl, "PNG", ex, ey, el.w, el.h);
+      continue;
+    }
+    if (el.kind === "signature") {
+      if (design.signatureDataUrl) tryAddImage(doc, design.signatureDataUrl, "PNG", ex, ey, el.w, el.h);
+      continue;
+    }
+
+    // text or field
+    let text = "";
+    if (el.kind === "text") text = el.text || "";
+    else if (el.kind === "field" && el.field) {
+      const col = (mapping as any)[el.field];
+      const v = col ? String(student.row[col] ?? "") : "";
+      text = (el.labelPrefix || "") + v;
+    }
+    if (!text) continue;
+
+    const [r, g, b] = hexToRgb(el.color || "#111111");
+    doc.setTextColor(r, g, b);
+    const style: "normal" | "bold" | "italic" | "bolditalic" =
+      el.bold && el.italic ? "bolditalic" : el.bold ? "bold" : el.italic ? "italic" : "normal";
+    doc.setFont(el.fontFamily, style);
+    doc.setFontSize(el.fontSize);
+
+    // Vertical centering inside box (rough): start near top + ascent
+    const lh = el.fontSize * 0.42; // pt → mm line-height-ish
+    const lines = doc.splitTextToSize(text, el.w) as string[];
+    const totalH = lines.length * lh;
+    const startY = ey + Math.max(lh, (el.h - totalH) / 2 + lh * 0.85);
+
+    let tx = ex;
+    if (el.align === "center") tx = ex + el.w / 2;
+    else if (el.align === "right") tx = ex + el.w;
+
+    lines.forEach((ln, i) => {
+      if (startY + i * lh > ey + el.h + 0.5) return;
+      doc.text(ln, tx, startY + i * lh, { align: el.align });
+    });
+  }
+}
+
 export function drawCard(ctx: DrawCtx) {
   switch (ctx.design.template) {
     case "horizontal-classic":
@@ -467,6 +538,8 @@ export function drawCard(ctx: DrawCtx) {
       return drawVerticalModern(ctx);
     case "horizontal-modern":
       return drawHorizontalModern(ctx);
+    case "custom":
+      return drawCustomTemplate(ctx);
     case "vertical-classic":
     default:
       return drawVerticalClassic(ctx);
