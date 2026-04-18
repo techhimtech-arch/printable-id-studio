@@ -2,24 +2,19 @@ import { useMemo, useState } from "react";
 import jsPDF from "jspdf";
 import { useIdStore } from "@/lib/idcard-store";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { ArrowLeft, Download, Loader2 } from "lucide-react";
 import CardPreview from "./CardPreview";
-import { FIELD_LABELS, type FieldKey } from "@/types/idcard";
-
-const visibleFields: FieldKey[] = ["rollNo", "class", "section", "dob", "bloodGroup", "fatherName"];
-
-function hexToRgb(hex: string): [number, number, number] {
-  const m = hex.replace("#", "");
-  const v = m.length === 3 ? m.split("").map((c) => c + c).join("") : m;
-  const n = parseInt(v, 16);
-  return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
-}
+import { CARD_DIMS, drawCard, drawCropMarks } from "@/lib/cardDraw";
 
 export default function StepExport() {
   const { students, photos, mapping, design, setStep } = useIdStore();
   const [busy, setBusy] = useState(false);
+  const [cutGuides, setCutGuides] = useState(true);
 
   const photoMap = useMemo(() => Object.fromEntries(photos.map((p) => [p.id, p])), [photos]);
+  const isVertical = design.orientation === "portrait";
+  const dims = isVertical ? CARD_DIMS.vertical : CARD_DIMS.horizontal;
 
   const generatePdf = async () => {
     setBusy(true);
@@ -27,14 +22,13 @@ export default function StepExport() {
       const doc = new jsPDF({ unit: "mm", format: "a4" });
       const pageW = 210;
       const pageH = 297;
-      const cardW = 54; // mm (CR-80-ish)
-      const cardH = 86;
-      const cols = 3;
-      const rows = 3;
+      const cardW = dims.w;
+      const cardH = dims.h;
+      const cols = isVertical ? 3 : 2;
+      const rows = isVertical ? 3 : 5;
       const gapX = (pageW - cols * cardW) / (cols + 1);
       const gapY = (pageH - rows * cardH) / (rows + 1);
       const perPage = cols * rows;
-      const [r, g, b] = hexToRgb(design.accentColor);
 
       for (let i = 0; i < students.length; i++) {
         if (i > 0 && i % perPage === 0) doc.addPage();
@@ -44,77 +38,10 @@ export default function StepExport() {
         const x = gapX + col * (cardW + gapX);
         const y = gapY + row * (cardH + gapY);
 
-        // Card border
-        doc.setDrawColor(220);
-        doc.setLineWidth(0.2);
-        doc.roundedRect(x, y, cardW, cardH, 2, 2, "S");
-
-        // Header band
-        doc.setFillColor(r, g, b);
-        doc.roundedRect(x, y, cardW, 14, 2, 2, "F");
-        doc.rect(x, y + 7, cardW, 7, "F");
-
-        let textX = x + 3;
-        if (design.logoDataUrl) {
-          try {
-            doc.addImage(design.logoDataUrl, "PNG", x + 2, y + 2, 10, 10);
-            textX = x + 14;
-          } catch { /* ignore */ }
-        }
-
-        doc.setTextColor(255, 255, 255);
-        doc.setFont("helvetica", "bold");
-        doc.setFontSize(8);
-        doc.text(design.schoolName.toUpperCase(), textX, y + 6, { maxWidth: cardW - (textX - x) - 2 });
-        doc.setFont("helvetica", "normal");
-        doc.setFontSize(5.5);
-        doc.text(design.schoolSubtitle, textX, y + 10, { maxWidth: cardW - (textX - x) - 2 });
-
-        // Photo
         const s = students[i];
         const photo = s.photoId ? photoMap[s.photoId] : null;
-        const photoSize = 26;
-        const px = x + (cardW - photoSize) / 2;
-        const py = y + 18;
-        doc.setDrawColor(r, g, b);
-        doc.setLineWidth(0.6);
-        doc.rect(px, py, photoSize, photoSize, "S");
-        if (photo) {
-          try {
-            doc.addImage(photo.dataUrl, "JPEG", px, py, photoSize, photoSize);
-          } catch { /* ignore */ }
-        } else {
-          doc.setFontSize(5);
-          doc.setTextColor(150);
-          doc.text("No photo", px + photoSize / 2, py + photoSize / 2, { align: "center" });
-        }
-
-        // Name
-        const name = mapping.name ? s.row[mapping.name] : "";
-        doc.setTextColor(20, 20, 20);
-        doc.setFont("helvetica", "bold");
-        doc.setFontSize(9);
-        doc.text(name || "—", x + cardW / 2, py + photoSize + 5, { align: "center", maxWidth: cardW - 4 });
-        doc.setFont("helvetica", "normal");
-        doc.setFontSize(5.5);
-        doc.setTextColor(120);
-        doc.text("STUDENT ID CARD", x + cardW / 2, py + photoSize + 8.5, { align: "center" });
-
-        // Fields
-        let fy = py + photoSize + 13;
-        doc.setFontSize(6.5);
-        for (const f of visibleFields) {
-          const col2 = mapping[f];
-          if (!col2) continue;
-          const v = s.row[col2];
-          if (!v) continue;
-          doc.setTextColor(130);
-          doc.text(FIELD_LABELS[f], x + 3, fy);
-          doc.setTextColor(30);
-          doc.text(String(v), x + cardW - 3, fy, { align: "right", maxWidth: cardW / 2 });
-          fy += 3.4;
-          if (fy > y + cardH - 3) break;
-        }
+        drawCard({ doc, x, y, student: s, photo, mapping, design });
+        if (cutGuides) drawCropMarks(doc, x, y, cardW, cardH);
       }
 
       doc.save(`id-cards-${Date.now()}.pdf`);
@@ -123,19 +50,24 @@ export default function StepExport() {
     }
   };
 
-  const sample = students.slice(0, 6);
+  const sample = students.slice(0, isVertical ? 6 : 4);
 
   return (
     <div className="space-y-6">
       <div>
         <h2 className="text-2xl font-semibold tracking-tight">Preview & download</h2>
         <p className="text-muted-foreground mt-1">
-          {students.length} cards will be generated · 9 per A4 page.
+          {students.length} cards · {isVertical ? "9" : "10"} per A4 page · {isVertical ? "Portrait" : "Landscape"} layout.
         </p>
       </div>
 
+      <label className="flex items-center gap-2 text-sm cursor-pointer w-fit">
+        <Checkbox checked={cutGuides} onCheckedChange={(v) => setCutGuides(Boolean(v))} />
+        Include cut guides for trimming
+      </label>
+
       <div className="bg-muted/40 rounded-lg p-6 border">
-        <div className="flex flex-wrap gap-4 justify-center">
+        <div className="flex flex-wrap gap-5 justify-center">
           {sample.map((s) => (
             <CardPreview
               key={s.id}

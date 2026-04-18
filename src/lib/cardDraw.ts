@@ -1,0 +1,489 @@
+import type jsPDF from "jspdf";
+import type { CardDesign, ColumnMapping, PhotoFile, Student } from "@/types/idcard";
+import { FIELD_LABELS } from "@/types/idcard";
+
+export const CARD_DIMS = {
+  vertical: { w: 54, h: 86 },
+  horizontal: { w: 86, h: 54 },
+};
+
+export function hexToRgb(hex: string): [number, number, number] {
+  const m = hex.replace("#", "");
+  const v = m.length === 3 ? m.split("").map((c) => c + c).join("") : m;
+  const n = parseInt(v, 16);
+  return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+}
+
+export function lighten([r, g, b]: [number, number, number], amt: number): [number, number, number] {
+  return [
+    Math.round(r + (255 - r) * amt),
+    Math.round(g + (255 - g) * amt),
+    Math.round(b + (255 - b) * amt),
+  ];
+}
+
+export function drawDashedLine(doc: jsPDF, x1: number, y1: number, x2: number, y2: number, dash = 0.6, gap = 0.6) {
+  const dx = x2 - x1;
+  const dy = y2 - y1;
+  const len = Math.hypot(dx, dy);
+  const ux = dx / len;
+  const uy = dy / len;
+  let drawn = 0;
+  while (drawn < len) {
+    const sx = x1 + ux * drawn;
+    const sy = y1 + uy * drawn;
+    const ex = x1 + ux * Math.min(drawn + dash, len);
+    const ey = y1 + uy * Math.min(drawn + dash, len);
+    doc.line(sx, sy, ex, ey);
+    drawn += dash + gap;
+  }
+}
+
+export function drawDiagonalStripes(
+  doc: jsPDF,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  rgb: [number, number, number],
+) {
+  doc.saveGraphicsState();
+  // @ts-ignore - clip via rectangle
+  doc.rect(x, y, w, h).clip().discardPath();
+  doc.setDrawColor(rgb[0], rgb[1], rgb[2]);
+  doc.setLineWidth(1.2);
+  for (let i = -h; i < w + h; i += 2.4) {
+    doc.line(x + i, y + h, x + i + h, y);
+  }
+  doc.restoreGraphicsState();
+}
+
+export function drawCornerAccent(
+  doc: jsPDF,
+  x: number,
+  y: number,
+  size: number,
+  rgb: [number, number, number],
+) {
+  doc.setFillColor(rgb[0], rgb[1], rgb[2]);
+  // quarter circle approximated by filled circle then mask via rect
+  doc.circle(x, y, size, "F");
+}
+
+function safeText(
+  doc: jsPDF,
+  text: string,
+  x: number,
+  y: number,
+  maxWidth: number,
+  opts: { align?: "left" | "center" | "right"; lineHeight?: number; maxLines?: number } = {},
+) {
+  const lines = doc.splitTextToSize(text || "", maxWidth) as string[];
+  const lh = opts.lineHeight ?? 3.2;
+  const max = opts.maxLines ?? lines.length;
+  const shown = lines.slice(0, max);
+  if (lines.length > max && shown.length > 0) {
+    shown[shown.length - 1] = shown[shown.length - 1].replace(/.{1,3}$/, "…");
+  }
+  shown.forEach((ln, i) => {
+    doc.text(ln, x, y + i * lh, { align: opts.align ?? "left" });
+  });
+  return shown.length * lh;
+}
+
+interface DrawCtx {
+  doc: jsPDF;
+  x: number;
+  y: number;
+  student: Student;
+  photo: PhotoFile | null;
+  mapping: ColumnMapping;
+  design: CardDesign;
+}
+
+function getValue(student: Student, mapping: ColumnMapping, key: string) {
+  const col = (mapping as any)[key];
+  if (!col) return "";
+  return String(student.row[col] ?? "");
+}
+
+function tryAddImage(doc: jsPDF, dataUrl: string, fmt: "JPEG" | "PNG", x: number, y: number, w: number, h: number) {
+  try {
+    doc.addImage(dataUrl, fmt, x, y, w, h);
+  } catch {
+    try {
+      doc.addImage(dataUrl, fmt === "JPEG" ? "PNG" : "JPEG", x, y, w, h);
+    } catch {
+      /* ignore */
+    }
+  }
+}
+
+/* ============ TEMPLATE: VERTICAL CLASSIC ============ */
+function drawVerticalClassic({ doc, x, y, student, photo, mapping, design }: DrawCtx) {
+  const W = 54, H = 86;
+  const rgb = hexToRgb(design.accentColor);
+  const light = lighten(rgb, 0.85);
+
+  // Outer border
+  doc.setDrawColor(220);
+  doc.setLineWidth(0.2);
+  doc.roundedRect(x, y, W, H, 2, 2, "S");
+
+  // Top corner accent (large soft quarter)
+  doc.setFillColor(light[0], light[1], light[2]);
+  doc.circle(x + W, y, 22, "F");
+  doc.setFillColor(rgb[0], rgb[1], rgb[2]);
+  doc.circle(x, y, 14, "F");
+
+  // Logo top-left if any
+  if (design.logoDataUrl) {
+    tryAddImage(doc, design.logoDataUrl, "PNG", x + 2, y + 2, 8, 8);
+  }
+
+  // Photo
+  const pw = 24, ph = 28;
+  const px = x + (W - pw) / 2;
+  const py = y + 14;
+  doc.setFillColor(255, 255, 255);
+  doc.rect(px - 0.8, py - 0.8, pw + 1.6, ph + 1.6, "F");
+  doc.setDrawColor(rgb[0], rgb[1], rgb[2]);
+  doc.setLineWidth(0.6);
+  doc.rect(px, py, pw, ph, "S");
+  if (photo) tryAddImage(doc, photo.dataUrl, "JPEG", px, py, pw, ph);
+
+  // Name
+  const name = getValue(student, mapping, "name") || "—";
+  doc.setTextColor(20, 20, 20);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(10);
+  safeText(doc, name.toUpperCase(), x + W / 2, py + ph + 4.5, W - 6, { align: "center", lineHeight: 3.6, maxLines: 1 });
+
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(5.5);
+  doc.setTextColor(rgb[0], rgb[1], rgb[2]);
+  doc.text("STUDENT IDENTITY CARD", x + W / 2, py + ph + 7.6, { align: "center" });
+
+  // Dashed divider
+  doc.setDrawColor(rgb[0], rgb[1], rgb[2]);
+  doc.setLineWidth(0.2);
+  drawDashedLine(doc, x + 4, py + ph + 9.5, x + W - 4, py + ph + 9.5, 0.5, 0.5);
+
+  // Fields
+  let fy = py + ph + 12.5;
+  const fields = design.visibleFields.filter((f) => f !== "name" && f !== "address");
+  doc.setFontSize(6.2);
+  for (const f of fields) {
+    const v = getValue(student, mapping, f);
+    if (!v) continue;
+    if (fy > y + H - 16) break;
+    // bullet square
+    doc.setFillColor(rgb[0], rgb[1], rgb[2]);
+    doc.rect(x + 3, fy - 1.6, 1.2, 1.2, "F");
+    doc.setTextColor(120);
+    doc.setFont("helvetica", "normal");
+    doc.text(FIELD_LABELS[f], x + 5.5, fy);
+    doc.setTextColor(25);
+    doc.setFont("helvetica", "bold");
+    doc.text(String(v), x + W - 3, fy, { align: "right", maxWidth: 26 });
+    fy += 3.5;
+  }
+
+  // Address (if present, multi-line)
+  const addr = getValue(student, mapping, "address");
+  if (addr && design.visibleFields.includes("address") && fy < y + H - 14) {
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(120);
+    doc.setFontSize(5.5);
+    doc.text("ADDRESS", x + 3, fy);
+    doc.setTextColor(40);
+    doc.setFontSize(5.8);
+    safeText(doc, addr, x + 3, fy + 2.6, W - 6, { lineHeight: 2.6, maxLines: 2 });
+  }
+
+  // Footer band
+  const fbH = 9;
+  doc.setFillColor(rgb[0], rgb[1], rgb[2]);
+  doc.rect(x, y + H - fbH, W, fbH, "F");
+  doc.setTextColor(255, 255, 255);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(6.5);
+  safeText(doc, design.schoolName, x + W / 2, y + H - fbH + 3.5, W - 4, { align: "center", maxLines: 1 });
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(4.8);
+  const contact = [design.contactPhone, design.contactEmail].filter(Boolean).join("  ·  ");
+  if (contact) doc.text(contact, x + W / 2, y + H - fbH + 6.6, { align: "center" });
+}
+
+/* ============ TEMPLATE: HORIZONTAL CLASSIC ============ */
+function drawHorizontalClassic({ doc, x, y, student, photo, mapping, design }: DrawCtx) {
+  const W = 86, H = 54;
+  const rgb = hexToRgb(design.accentColor);
+
+  doc.setDrawColor(220);
+  doc.setLineWidth(0.2);
+  doc.roundedRect(x, y, W, H, 2, 2, "S");
+
+  // Top header band
+  const hdrH = 11;
+  doc.setFillColor(rgb[0], rgb[1], rgb[2]);
+  doc.rect(x, y, W, hdrH, "F");
+
+  let textX = x + 3;
+  if (design.logoDataUrl) {
+    tryAddImage(doc, design.logoDataUrl, "PNG", x + 2, y + 1.5, 8, 8);
+    textX = x + 12;
+  }
+  doc.setTextColor(255, 255, 255);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(9);
+  safeText(doc, design.schoolName.toUpperCase(), textX, y + 5, W - (textX - x) - 3, { maxLines: 1 });
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(5.5);
+  safeText(doc, design.schoolSubtitle, textX, y + 8.5, W - (textX - x) - 3, { maxLines: 1 });
+
+  // Diagonal stripes footer
+  const stripeH = 4.5;
+  drawDiagonalStripes(doc, x, y + H - stripeH, W, stripeH, rgb);
+
+  // Photo column (right)
+  const pw = 22, ph = 26;
+  const px = x + W - pw - 4;
+  const py = y + hdrH + 3;
+  doc.setDrawColor(rgb[0], rgb[1], rgb[2]);
+  doc.setLineWidth(0.5);
+  doc.rect(px, py, pw, ph, "S");
+  if (photo) tryAddImage(doc, photo.dataUrl, "JPEG", px, py, pw, ph);
+
+  // "IDENTITY CARD" pill
+  doc.setFillColor(rgb[0], rgb[1], rgb[2]);
+  doc.roundedRect(px, py + ph + 1.5, pw, 3.5, 1, 1, "F");
+  doc.setTextColor(255, 255, 255);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(5);
+  doc.text("IDENTITY CARD", px + pw / 2, py + ph + 4, { align: "center" });
+
+  // Signature line
+  if (design.signatureDataUrl) {
+    tryAddImage(doc, design.signatureDataUrl, "PNG", px + 2, py + ph + 6, pw - 4, 5);
+  }
+  doc.setDrawColor(120);
+  doc.setLineWidth(0.2);
+  doc.line(px, py + ph + 11.5, px + pw, py + ph + 11.5);
+  doc.setTextColor(110);
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(4.8);
+  doc.text("Principal", px + pw / 2, py + ph + 13.5, { align: "center" });
+
+  // Fields column (left)
+  const fx = x + 3;
+  const fmaxW = W - pw - 12;
+  let fy = y + hdrH + 4;
+
+  // Name (highlighted)
+  doc.setTextColor(rgb[0], rgb[1], rgb[2]);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(9);
+  const name = getValue(student, mapping, "name") || "—";
+  safeText(doc, name, fx, fy, fmaxW, { lineHeight: 3.6, maxLines: 1 });
+  fy += 4.5;
+  doc.setDrawColor(rgb[0], rgb[1], rgb[2]);
+  doc.setLineWidth(0.3);
+  doc.line(fx, fy - 1, fx + 18, fy - 1);
+
+  doc.setFontSize(6.2);
+  const fields = design.visibleFields.filter((f) => f !== "name");
+  const labelW = 18;
+  for (const f of fields) {
+    const v = getValue(student, mapping, f);
+    if (!v) continue;
+    if (fy > y + H - 7) break;
+    doc.setTextColor(110);
+    doc.setFont("helvetica", "normal");
+    doc.text(FIELD_LABELS[f], fx, fy);
+    doc.setTextColor(35);
+    doc.setFont("helvetica", "bold");
+    doc.text(":", fx + labelW - 1, fy);
+    const lines = doc.splitTextToSize(String(v), fmaxW - labelW) as string[];
+    const max = f === "address" ? 2 : 1;
+    const shown = lines.slice(0, max);
+    if (lines.length > max) shown[shown.length - 1] = shown[shown.length - 1].replace(/.{1,3}$/, "…");
+    shown.forEach((ln, i) => doc.text(ln, fx + labelW + 1, fy + i * 2.8));
+    fy += 2.8 * shown.length + 0.8;
+  }
+}
+
+/* ============ TEMPLATE: VERTICAL MODERN ============ */
+function drawVerticalModern({ doc, x, y, student, photo, mapping, design }: DrawCtx) {
+  const W = 54, H = 86;
+  const rgb = hexToRgb(design.accentColor);
+
+  doc.setDrawColor(230);
+  doc.setLineWidth(0.2);
+  doc.roundedRect(x, y, W, H, 1, 1, "S");
+
+  // Solid header
+  const hdrH = 18;
+  doc.setFillColor(rgb[0], rgb[1], rgb[2]);
+  doc.rect(x, y, W, hdrH, "F");
+  if (design.logoDataUrl) tryAddImage(doc, design.logoDataUrl, "PNG", x + 3, y + 3, 8, 8);
+  doc.setTextColor(255);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(7.5);
+  safeText(doc, design.schoolName.toUpperCase(), x + W / 2, y + 7, W - 6, { align: "center", maxLines: 1 });
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(5);
+  safeText(doc, design.schoolSubtitle, x + W / 2, y + 11, W - 6, { align: "center", maxLines: 1 });
+  doc.setFontSize(5.5);
+  doc.text("STUDENT ID", x + W / 2, y + 15.5, { align: "center" });
+
+  // Photo - circular framed
+  const pw = 26, ph = 26;
+  const px = x + (W - pw) / 2;
+  const py = y + hdrH + 3;
+  doc.setFillColor(245, 245, 245);
+  doc.rect(px, py, pw, ph, "F");
+  if (photo) tryAddImage(doc, photo.dataUrl, "JPEG", px, py, pw, ph);
+  doc.setDrawColor(rgb[0], rgb[1], rgb[2]);
+  doc.setLineWidth(0.4);
+  doc.rect(px, py, pw, ph, "S");
+
+  // Name
+  const name = getValue(student, mapping, "name") || "—";
+  doc.setTextColor(20);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(9.5);
+  safeText(doc, name, x + W / 2, py + ph + 5, W - 6, { align: "center", maxLines: 1 });
+
+  // Fields with thin rules
+  let fy = py + ph + 9;
+  const fields = design.visibleFields.filter((f) => f !== "name");
+  doc.setFontSize(6);
+  for (const f of fields) {
+    const v = getValue(student, mapping, f);
+    if (!v) continue;
+    if (fy > y + H - 6) break;
+    doc.setTextColor(140);
+    doc.setFont("helvetica", "normal");
+    doc.text(FIELD_LABELS[f].toUpperCase(), x + 3, fy);
+    doc.setTextColor(30);
+    doc.setFont("helvetica", "bold");
+    const lines = doc.splitTextToSize(String(v), 28) as string[];
+    const max = f === "address" ? 2 : 1;
+    const shown = lines.slice(0, max);
+    if (lines.length > max) shown[shown.length - 1] = shown[shown.length - 1].replace(/.{1,3}$/, "…");
+    shown.forEach((ln, i) => doc.text(ln, x + W - 3, fy + i * 2.6, { align: "right" }));
+    fy += 2.6 * shown.length + 0.6;
+    doc.setDrawColor(235);
+    doc.setLineWidth(0.1);
+    doc.line(x + 3, fy - 0.5, x + W - 3, fy - 0.5);
+    fy += 1;
+  }
+}
+
+/* ============ TEMPLATE: HORIZONTAL MODERN ============ */
+function drawHorizontalModern({ doc, x, y, student, photo, mapping, design }: DrawCtx) {
+  const W = 86, H = 54;
+  const rgb = hexToRgb(design.accentColor);
+
+  doc.setDrawColor(230);
+  doc.setLineWidth(0.2);
+  doc.roundedRect(x, y, W, H, 1.5, 1.5, "S");
+
+  // Left accent sidebar
+  const sbW = 20;
+  doc.setFillColor(rgb[0], rgb[1], rgb[2]);
+  doc.rect(x, y, sbW, H, "F");
+
+  if (design.logoDataUrl) {
+    tryAddImage(doc, design.logoDataUrl, "PNG", x + (sbW - 12) / 2, y + 4, 12, 12);
+  }
+  doc.setTextColor(255);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(6);
+  safeText(doc, design.schoolName.toUpperCase(), x + sbW / 2, y + 20, sbW - 2, {
+    align: "center",
+    lineHeight: 2.6,
+    maxLines: 3,
+  });
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(4.5);
+  doc.text("ID CARD", x + sbW / 2, y + H - 3, { align: "center" });
+
+  // Photo
+  const pw = 20, ph = 24;
+  const px = x + sbW + 3;
+  const py = y + 4;
+  doc.setDrawColor(rgb[0], rgb[1], rgb[2]);
+  doc.setLineWidth(0.4);
+  doc.rect(px, py, pw, ph, "S");
+  if (photo) tryAddImage(doc, photo.dataUrl, "JPEG", px, py, pw, ph);
+
+  // Name + role
+  const fx = px + pw + 4;
+  const fmaxW = W - (fx - x) - 3;
+  doc.setTextColor(20);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(10);
+  const name = getValue(student, mapping, "name") || "—";
+  safeText(doc, name, fx, py + 3.5, fmaxW, { lineHeight: 3.6, maxLines: 1 });
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(5.5);
+  doc.setTextColor(rgb[0], rgb[1], rgb[2]);
+  doc.text("STUDENT", fx, py + 6.5);
+
+  // Fields
+  let fy = py + 10.5;
+  doc.setFontSize(6);
+  const fields = design.visibleFields.filter((f) => f !== "name");
+  for (const f of fields) {
+    const v = getValue(student, mapping, f);
+    if (!v) continue;
+    if (fy > y + H - 4) break;
+    doc.setTextColor(120);
+    doc.setFont("helvetica", "normal");
+    doc.text(FIELD_LABELS[f], fx, fy);
+    doc.setTextColor(30);
+    doc.setFont("helvetica", "bold");
+    const lines = doc.splitTextToSize(String(v), fmaxW) as string[];
+    const max = f === "address" ? 2 : 1;
+    const shown = lines.slice(0, max);
+    if (lines.length > max) shown[shown.length - 1] = shown[shown.length - 1].replace(/.{1,3}$/, "…");
+    shown.forEach((ln, i) => doc.text(ln, x + W - 3, fy + i * 2.6, { align: "right" }));
+    fy += 2.6 * shown.length + 1.2;
+  }
+
+  // Bottom hairline
+  doc.setDrawColor(rgb[0], rgb[1], rgb[2]);
+  doc.setLineWidth(0.3);
+  doc.line(x + sbW + 3, y + H - 2.5, x + W - 3, y + H - 2.5);
+}
+
+export function drawCard(ctx: DrawCtx) {
+  switch (ctx.design.template) {
+    case "horizontal-classic":
+      return drawHorizontalClassic(ctx);
+    case "vertical-modern":
+      return drawVerticalModern(ctx);
+    case "horizontal-modern":
+      return drawHorizontalModern(ctx);
+    case "vertical-classic":
+    default:
+      return drawVerticalClassic(ctx);
+  }
+}
+
+export function drawCropMarks(doc: jsPDF, x: number, y: number, w: number, h: number) {
+  doc.setDrawColor(180);
+  doc.setLineWidth(0.1);
+  const m = 1.5;
+  // corners
+  doc.line(x - m, y, x - 0.3, y);
+  doc.line(x, y - m, x, y - 0.3);
+  doc.line(x + w + 0.3, y, x + w + m, y);
+  doc.line(x + w, y - m, x + w, y - 0.3);
+  doc.line(x - m, y + h, x - 0.3, y + h);
+  doc.line(x, y + h + 0.3, x, y + h + m);
+  doc.line(x + w + 0.3, y + h, x + w + m, y + h);
+  doc.line(x + w, y + h + 0.3, x + w, y + h + m);
+}

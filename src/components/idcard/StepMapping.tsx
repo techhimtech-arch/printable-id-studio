@@ -19,13 +19,17 @@ function guessMapping(headers: string[]): Partial<Record<FieldKey, string>> {
   };
   return {
     name: find("name", "student"),
-    rollNo: find("roll", "id", "admission"),
+    rollNo: find("roll", "id"),
+    admissionNo: find("admission", "adm "),
     class: find("class", "grade", "std"),
     section: find("section", "div"),
     dob: find("dob", "birth"),
     bloodGroup: find("blood"),
-    fatherName: find("father", "parent", "guardian"),
+    fatherName: find("father", "guardian"),
+    motherName: find("mother"),
     address: find("address", "addr"),
+    mobile: find("mobile", "phone", "contact"),
+    aadharNo: find("aadhar", "aadhaar", "uid"),
   };
 }
 

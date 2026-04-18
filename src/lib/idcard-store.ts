@@ -1,5 +1,6 @@
 import { create } from "zustand";
-import type { CardDesign, ColumnMapping, PhotoFile, Student } from "@/types/idcard";
+import type { CardDesign, ColumnMapping, FieldKey, PhotoFile, Student } from "@/types/idcard";
+import { TEMPLATE_ORIENTATION } from "@/types/idcard";
 
 interface State {
   step: number;
@@ -18,14 +19,22 @@ interface State {
   buildStudents: () => void;
   assignPhoto: (studentId: string, photoId: string | null) => void;
   setDesign: (d: Partial<CardDesign>) => void;
+  toggleField: (f: FieldKey) => void;
   reset: () => void;
 }
 
 const defaultDesign: CardDesign = {
+  template: "vertical-classic",
   schoolName: "Greenwood High School",
   schoolSubtitle: "Excellence in Education",
+  schoolAddress: "123 Education Lane, Bengaluru 560001",
+  contactPhone: "+91 98765 43210",
+  contactEmail: "info@greenwood.edu",
+  principalName: "Dr. R. K. Sharma",
   logoDataUrl: null,
-  accentColor: "#2563eb",
+  signatureDataUrl: null,
+  accentColor: "#1d4ed8",
+  visibleFields: ["rollNo", "class", "section", "dob", "bloodGroup", "fatherName", "mobile", "address"],
   orientation: "portrait",
 };
 
@@ -61,7 +70,16 @@ export const useIdStore = create<State>((set, get) => ({
     set({
       students: get().students.map((s) => (s.id === studentId ? { ...s, photoId } : s)),
     }),
-  setDesign: (d) => set({ design: { ...get().design, ...d } }),
+  setDesign: (d) => {
+    const next = { ...get().design, ...d };
+    if (d.template) next.orientation = TEMPLATE_ORIENTATION[d.template];
+    set({ design: next });
+  },
+  toggleField: (f) => {
+    const cur = get().design.visibleFields;
+    const next = cur.includes(f) ? cur.filter((x) => x !== f) : [...cur, f];
+    set({ design: { ...get().design, visibleFields: next } });
+  },
   reset: () =>
     set({
       step: 0,
