@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import type { CardDesign, ColumnMapping, FieldKey, PhotoFile, Student } from "@/types/idcard";
+import type { CardDesign, ColumnMapping, CustomElement, FieldKey, PhotoFile, Student } from "@/types/idcard";
 import { TEMPLATE_ORIENTATION } from "@/types/idcard";
 
 interface State {
@@ -20,6 +20,9 @@ interface State {
   assignPhoto: (studentId: string, photoId: string | null) => void;
   setDesign: (d: Partial<CardDesign>) => void;
   toggleField: (f: FieldKey) => void;
+  addCustomElement: (el: CustomElement) => void;
+  updateCustomElement: (id: string, patch: Partial<CustomElement>) => void;
+  removeCustomElement: (id: string) => void;
   reset: () => void;
 }
 
@@ -36,6 +39,10 @@ const defaultDesign: CardDesign = {
   accentColor: "#1d4ed8",
   visibleFields: ["rollNo", "class", "section", "dob", "bloodGroup", "fatherName", "mobile", "address"],
   orientation: "portrait",
+  customWidth: 54,
+  customHeight: 86,
+  customBgDataUrl: null,
+  customElements: [],
 };
 
 export const useIdStore = create<State>((set, get) => ({
@@ -72,7 +79,12 @@ export const useIdStore = create<State>((set, get) => ({
     }),
   setDesign: (d) => {
     const next = { ...get().design, ...d };
-    if (d.template) next.orientation = TEMPLATE_ORIENTATION[d.template];
+    if (d.template) {
+      next.orientation = TEMPLATE_ORIENTATION[d.template];
+      if (d.template === "custom") {
+        next.orientation = next.customHeight >= next.customWidth ? "portrait" : "landscape";
+      }
+    }
     set({ design: next });
   },
   toggleField: (f) => {
@@ -80,6 +92,19 @@ export const useIdStore = create<State>((set, get) => ({
     const next = cur.includes(f) ? cur.filter((x) => x !== f) : [...cur, f];
     set({ design: { ...get().design, visibleFields: next } });
   },
+  addCustomElement: (el) =>
+    set({ design: { ...get().design, customElements: [...get().design.customElements, el] } }),
+  updateCustomElement: (id, patch) =>
+    set({
+      design: {
+        ...get().design,
+        customElements: get().design.customElements.map((e) => (e.id === id ? { ...e, ...patch } : e)),
+      },
+    }),
+  removeCustomElement: (id) =>
+    set({
+      design: { ...get().design, customElements: get().design.customElements.filter((e) => e.id !== id) },
+    }),
   reset: () =>
     set({
       step: 0,

@@ -46,7 +46,32 @@ export type CardTemplate =
   | "vertical-classic"
   | "horizontal-classic"
   | "vertical-modern"
-  | "horizontal-modern";
+  | "horizontal-modern"
+  | "custom";
+
+export type CustomElementKind = "photo" | "field" | "text" | "logo" | "signature";
+
+/** All positions/sizes are in millimetres, relative to card top-left. */
+export interface CustomElement {
+  id: string;
+  kind: CustomElementKind;
+  /** For kind="field": the FieldKey or "name". */
+  field?: FieldKey;
+  /** For kind="text": static label text (e.g. "ID CARD"). */
+  text?: string;
+  /** For kind="field": prefix shown before value (e.g. "Roll No: "). */
+  labelPrefix?: string;
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  fontSize: number; // pt
+  fontFamily: "helvetica" | "times" | "courier";
+  bold: boolean;
+  italic: boolean;
+  color: string; // hex
+  align: "left" | "center" | "right";
+}
 
 export interface CardDesign {
   template: CardTemplate;
@@ -62,6 +87,13 @@ export interface CardDesign {
   /** Which mapped fields appear on the card body. */
   visibleFields: FieldKey[];
   orientation: "portrait" | "landscape"; // derived from template, kept for back-compat
+  /** Custom card width / height in millimetres (used by template="custom"). */
+  customWidth: number;
+  customHeight: number;
+  /** Background image (Photoshop/Canva design). */
+  customBgDataUrl: string | null;
+  /** Draggable elements rendered over the background. */
+  customElements: CustomElement[];
 }
 
 export const TEMPLATE_ORIENTATION: Record<CardTemplate, "portrait" | "landscape"> = {
@@ -69,4 +101,5 @@ export const TEMPLATE_ORIENTATION: Record<CardTemplate, "portrait" | "landscape"
   "vertical-modern": "portrait",
   "horizontal-classic": "landscape",
   "horizontal-modern": "landscape",
+  custom: "portrait",
 };
