@@ -3,6 +3,7 @@ import VerticalClassic from "./templates/VerticalClassic";
 import HorizontalClassic from "./templates/HorizontalClassic";
 import VerticalModern from "./templates/VerticalModern";
 import HorizontalModern from "./templates/HorizontalModern";
+import CustomTemplate from "./templates/CustomTemplate";
 
 export interface CardProps {
   student: Student;
@@ -19,6 +20,8 @@ export default function CardPreview(props: CardProps) {
       return <VerticalModern {...props} />;
     case "horizontal-modern":
       return <HorizontalModern {...props} />;
+    case "custom":
+      return <CustomTemplate {...props} />;
     case "vertical-classic":
     default:
       return <VerticalClassic {...props} />;
