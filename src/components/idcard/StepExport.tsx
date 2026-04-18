@@ -13,13 +13,7 @@ export default function StepExport() {
   const [cutGuides, setCutGuides] = useState(true);
 
   const photoMap = useMemo(() => Object.fromEntries(photos.map((p) => [p.id, p])), [photos]);
-  const isCustom = design.template === "custom";
-  const isVertical = design.orientation === "portrait";
-  const dims = isCustom
-    ? { w: design.customWidth, h: design.customHeight }
-    : isVertical
-    ? CARD_DIMS.vertical
-    : CARD_DIMS.horizontal;
+  const dims = { w: design.customWidth, h: design.customHeight };
 
   const generatePdf = async () => {
     setBusy(true);

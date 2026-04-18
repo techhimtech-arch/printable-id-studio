@@ -78,10 +78,19 @@ export const useIdStore = create<State>((set, get) => ({
       students: get().students.map((s) => (s.id === studentId ? { ...s, photoId } : s)),
     }),
   setDesign: (d) => {
-    const next = { ...get().design, ...d };
-    if (d.template) {
+    const prev = get().design;
+    const next = { ...prev, ...d };
+    if (d.template && d.template !== prev.template) {
       next.orientation = TEMPLATE_ORIENTATION[d.template];
-      if (d.template === "custom") {
+      if (d.template !== "custom") {
+        if (next.orientation === "portrait") {
+          next.customWidth = 54;
+          next.customHeight = 86;
+        } else {
+          next.customWidth = 86;
+          next.customHeight = 54;
+        }
+      } else {
         next.orientation = next.customHeight >= next.customWidth ? "portrait" : "landscape";
       }
     }
