@@ -23,7 +23,16 @@ export default function VerticalClassic({ student, photo, mapping, design }: Car
           <div className="h-7 w-7" />
         )}
         <div className="min-w-0 flex-1">
-          <div className="text-[10px] font-bold uppercase truncate leading-tight">
+          <div
+            className="font-bold uppercase leading-tight break-words"
+            style={{
+              fontSize: design.schoolName.length > 28 ? 8 : design.schoolName.length > 20 ? 9 : 10,
+              display: "-webkit-box",
+              WebkitLineClamp: 2,
+              WebkitBoxOrient: "vertical",
+              overflow: "hidden",
+            }}
+          >
             {design.schoolName}
           </div>
           {design.schoolSubtitle && (

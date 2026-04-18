@@ -141,13 +141,15 @@ function drawVerticalClassic({ doc, x, y, student, photo, mapping, design }: Dra
   }
   doc.setTextColor(20);
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(7);
-  safeText(doc, design.schoolName.toUpperCase(), textX, y + 4, W - (textX - x) - 2, { maxLines: 1 });
+  const nameLen = design.schoolName.length;
+  const nameSize = nameLen > 28 ? 5.5 : nameLen > 20 ? 6.2 : 7;
+  doc.setFontSize(nameSize);
+  safeText(doc, design.schoolName.toUpperCase(), textX, y + 3.5, W - (textX - x) - 2, { maxLines: 2, lineHeight: 2.6 });
   if (design.schoolSubtitle) {
     doc.setFont("helvetica", "normal");
     doc.setFontSize(4.8);
     doc.setTextColor(120);
-    safeText(doc, design.schoolSubtitle, textX, y + 7.5, W - (textX - x) - 2, { maxLines: 1 });
+    safeText(doc, design.schoolSubtitle, textX, y + 8.8, W - (textX - x) - 2, { maxLines: 1 });
   }
 
   // Photo
