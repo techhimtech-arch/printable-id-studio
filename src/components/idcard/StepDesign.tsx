@@ -145,6 +145,52 @@ export default function StepDesign() {
         </div>
       </div>
 
+      {/* Card size (mm) — works for all templates */}
+      <div className="space-y-2">
+        <Label>Card size (mm)</Label>
+        <p className="text-xs text-muted-foreground">
+          Standard ID is 54 × 86 mm (CR80). Adjust if you print on different stock.
+        </p>
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-muted-foreground w-10">Width</span>
+            <Input
+              type="number"
+              min={30}
+              max={150}
+              value={design.customWidth}
+              onChange={(e) => setDesign({ customWidth: Math.max(30, Math.min(150, Number(e.target.value) || 54)) })}
+              className="w-24"
+            />
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-muted-foreground w-10">Height</span>
+            <Input
+              type="number"
+              min={30}
+              max={150}
+              value={design.customHeight}
+              onChange={(e) => setDesign({ customHeight: Math.max(30, Math.min(150, Number(e.target.value) || 86)) })}
+              className="w-24"
+            />
+          </div>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() =>
+              setDesign(
+                design.orientation === "portrait"
+                  ? { customWidth: 54, customHeight: 86 }
+                  : { customWidth: 86, customHeight: 54 },
+              )
+            }
+          >
+            Reset to standard
+          </Button>
+        </div>
+      </div>
+
       {design.template === "custom" && <CustomEditor />}
 
       <div className="grid md:grid-cols-2 gap-5">
