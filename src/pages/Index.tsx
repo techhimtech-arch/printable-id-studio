@@ -1,16 +1,28 @@
-// Update this page (the content is just a fallback if you fail to update the page)
+import { useIdStore } from "@/lib/idcard-store";
+import Stepper from "@/components/idcard/Stepper";
+import StepUpload from "@/components/idcard/StepUpload";
+import StepMapping from "@/components/idcard/StepMapping";
+import StepReview from "@/components/idcard/StepReview";
+import StepDesign from "@/components/idcard/StepDesign";
+import StepExport from "@/components/idcard/StepExport";
 
-// IMPORTANT: Fully REPLACE this with your own code
-const PlaceholderIndex = () => {
-  // PLACEHOLDER: Replace this entire return statement with the user's app.
-  // The inline background color is intentionally not part of the design system.
+const Index = () => {
+  const step = useIdStore((s) => s.step);
+
   return (
-    <div className="flex min-h-screen items-center justify-center" style={{ backgroundColor: '#fcfbf8' }}>
-      <img data-lovable-blank-page-placeholder="REMOVE_THIS" src="/placeholder.svg" alt="Your app will live here!" />
+    <div className="min-h-screen flex bg-background">
+      <Stepper />
+      <main className="flex-1 overflow-auto">
+        <div className="max-w-6xl mx-auto p-8">
+          {step === 0 && <StepUpload />}
+          {step === 1 && <StepMapping />}
+          {step === 2 && <StepReview />}
+          {step === 3 && <StepDesign />}
+          {step === 4 && <StepExport />}
+        </div>
+      </main>
     </div>
   );
 };
-
-const Index = PlaceholderIndex;
 
 export default Index;
