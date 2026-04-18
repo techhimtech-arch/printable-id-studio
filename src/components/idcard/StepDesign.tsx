@@ -78,6 +78,16 @@ function TemplateThumb({ tpl, active, accent, onClick }: { tpl: CardTemplate; ac
             <rect x="48" y="28" width="32" height="1.5" fill="#ccc" />
           </>
         )}
+        {tpl === "custom" && (
+          <>
+            <rect x="3" y="3" width={w - 6} height={h - 6} fill="#f5f5f5" stroke={accent} strokeDasharray="2 2" />
+            <rect x="8" y="10" width="14" height="18" fill={accent} opacity="0.3" />
+            <rect x="26" y="12" width="20" height="2" fill={accent} />
+            <rect x="26" y="18" width="16" height="1.5" fill="#999" />
+            <rect x="26" y="22" width="18" height="1.5" fill="#999" />
+            <text x={w / 2} y={h - 6} textAnchor="middle" fontSize="6" fill={accent} fontWeight="bold">CUSTOM</text>
+          </>
+        )}
       </svg>
     </button>
   );
