@@ -1,3 +1,4 @@
+import { formatDate } from "@/lib/format-date";
 import type { CardProps } from "../CardPreview";
 import { FIELD_LABELS } from "@/types/idcard";
 
@@ -38,7 +39,7 @@ export default function HorizontalClassic({ student, photo, mapping, design }: C
             {fields.map((f) => {
               const col = mapping[f];
               if (!col) return null;
-              const v = student.row[col];
+              const raw = student.row[col]; const v = f === "dob" ? formatDate(String(raw ?? ""), design.dateFormat) : raw;
               if (!v) return null;
               return (
                 <div key={f} className="grid grid-cols-[60px_8px_1fr] text-[8px] gap-1 items-start">

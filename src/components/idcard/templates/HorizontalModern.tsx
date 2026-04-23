@@ -1,3 +1,4 @@
+import { formatDate } from "@/lib/format-date";
 import type { CardProps } from "../CardPreview";
 import { FIELD_LABELS } from "@/types/idcard";
 
@@ -47,7 +48,7 @@ export default function HorizontalModern({ student, photo, mapping, design }: Ca
             {fields.map((f) => {
               const col = mapping[f];
               if (!col) return null;
-              const v = student.row[col];
+              const raw = student.row[col]; const v = f === "dob" ? formatDate(String(raw ?? ""), design.dateFormat) : raw;
               if (!v) return null;
               return (
                 <div key={f} className="flex justify-between gap-2 text-[8px]">
