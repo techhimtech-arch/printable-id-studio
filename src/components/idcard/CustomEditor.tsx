@@ -283,8 +283,23 @@ export default function CustomEditor() {
             )}
           </div>
         </div>
+        <div className="space-y-1.5 sm:col-span-2 lg:col-span-4">
+          <Label className="text-xs">Date format (applies to Date of Birth)</Label>
+          <Select
+            value={design.dateFormat}
+            onValueChange={(v) => setDesign({ dateFormat: v as any })}
+          >
+            <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              {DATE_FORMAT_OPTIONS.map((o) => (
+                <SelectItem key={o.value} value={o.value} className="text-xs">
+                  {o.label}{o.value !== "asis" ? ` — ${o.sample}` : ""}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
       </div>
-
       {/* Add element toolbar */}
       <div className="flex flex-wrap gap-2 items-center p-3 bg-muted/30 rounded-lg border">
         <span className="text-xs font-medium text-muted-foreground mr-1">Add:</span>
