@@ -137,25 +137,70 @@ function getValue(student: Student, mapping: ColumnMapping, key: string, design?
 
 function detectImageFormat(dataUrl: string): "JPEG" | "PNG" {
   // data:image/png;base64,... | data:image/jpeg;... | data:image/jpg;...
-  const m = /^data:image\/(png|jpe?g|webp)/i.exec(dataUrl || "");
+  const m = /^data:image\/(png|jpe?g|webp|svg\+xml)/i.exec(dataUrl || "");
   if (!m) return "PNG";
   const t = m[1].toLowerCase();
-  if (t === "png") return "PNG";
+  if (t === "png" || t === "webp" || t === "svg+xml") return "PNG";
   return "JPEG";
+}
+
+// Cache normalized data URLs so the same logo/signature isn't re-converted
+// for every card.
+const normalizedCache = new Map<string, string>();
+
+/** Force-convert any image data URL into a clean PNG via canvas (sync via image element is async, so we cache on first use). */
+function normalizeToCanvasPng(dataUrl: string): Promise<string> {
+  if (normalizedCache.has(dataUrl)) return Promise.resolve(normalizedCache.get(dataUrl)!);
+  return new Promise((resolve) => {
+    try {
+      const img = new Image();
+      img.onload = () => {
+        try {
+          const canvas = document.createElement("canvas");
+          canvas.width = Math.max(1, img.width || 512);
+          canvas.height = Math.max(1, img.height || 512);
+          const ctx = canvas.getContext("2d");
+          if (!ctx) return resolve(dataUrl);
+          ctx.drawImage(img, 0, 0);
+          const out = canvas.toDataURL("image/png");
+          normalizedCache.set(dataUrl, out);
+          resolve(out);
+        } catch {
+          resolve(dataUrl);
+        }
+      };
+      img.onerror = () => resolve(dataUrl);
+      img.src = dataUrl;
+    } catch {
+      resolve(dataUrl);
+    }
+  });
+}
+
+// Pre-warm the cache so PDF generation can stay synchronous per card.
+export async function prewarmImageCache(urls: Array<string | null | undefined>) {
+  const unique = Array.from(new Set(urls.filter((u): u is string => !!u && u.startsWith("data:image/"))));
+  await Promise.all(unique.map((u) => normalizeToCanvasPng(u)));
 }
 
 function tryAddImage(doc: jsPDF, dataUrl: string, _fmt: "JPEG" | "PNG", x: number, y: number, w: number, h: number) {
   if (!dataUrl || typeof dataUrl !== "string" || !dataUrl.startsWith("data:image/")) return;
   if (!(w > 0) || !(h > 0)) return;
-  const detected = detectImageFormat(dataUrl);
+
+  // Prefer the cached PNG version when available — it's always PDF-safe.
+  const safeUrl = normalizedCache.get(dataUrl) ?? dataUrl;
+  const format = safeUrl === dataUrl ? detectImageFormat(dataUrl) : "PNG";
+
   try {
-    doc.addImage(dataUrl, detected, x, y, w, h, undefined, "FAST");
+    doc.addImage(safeUrl, format, x, y, w, h, undefined, "FAST");
+    return;
   } catch {
-    try {
-      doc.addImage(dataUrl, detected === "JPEG" ? "PNG" : "JPEG", x, y, w, h, undefined, "FAST");
-    } catch {
-      /* ignore — leave the placeholder rect */
-    }
+    /* try alternate format below */
+  }
+  try {
+    doc.addImage(safeUrl, format === "JPEG" ? "PNG" : "JPEG", x, y, w, h, undefined, "FAST");
+  } catch {
+    /* leave the placeholder rect */
   }
 }
 
@@ -746,7 +791,9 @@ export function drawCutGridLines(
   }
 }
 
-/** Run a draw callback with the canvas rotated 90° around the card center. */
+/** Run a draw callback with the canvas rotated 90° around the card center.
+ *  Uses a single combined CTM (translate(cx,cy) * rotate(90°) * translate(-cx,-cy))
+ *  which equals Matrix(0, 1, -1, 0, cx + cy, cy - cx). */
 export function withRotatedCard(
   doc: jsPDF,
   x: number,
@@ -766,9 +813,10 @@ export function withRotatedCard(
   };
 
   d.advancedAPI(() => {
-    d.setCurrentTransformationMatrix(new d.Matrix(1, 0, 0, 1, cx, cy));
-    d.setCurrentTransformationMatrix(new d.Matrix(0, 1, -1, 0, 0, 0));
-    d.setCurrentTransformationMatrix(new d.Matrix(1, 0, 0, 1, -cx, -cy));
+    // Single CTM: rotate 90° clockwise around (cx, cy).
+    // [ 0  1  cx + cy ]
+    // [-1  0  cy - cx ]
+    d.setCurrentTransformationMatrix(new d.Matrix(0, 1, -1, 0, cx + cy, cy - cx));
     draw(nx, ny, h, w);
   });
 }

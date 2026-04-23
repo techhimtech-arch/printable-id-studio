@@ -7,7 +7,7 @@ import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ArrowLeft, Download, Loader2 } from "lucide-react";
 import CardPreview from "./CardPreview";
-import { drawCard, drawCropMarks, drawCutGridLines, withRotatedCard } from "@/lib/cardDraw";
+import { drawCard, drawCropMarks, drawCutGridLines, withRotatedCard, prewarmImageCache } from "@/lib/cardDraw";
 
 type PageSizeKey = "a4" | "a4-landscape" | "letter" | "a3";
 type CutStyle = "none" | "corners" | "grid";
@@ -34,7 +34,7 @@ export default function StepExport() {
   const [pageSize, setPageSize] = useState<PageSizeKey>("a4");
   const [margin, setMargin] = useState(5);
   const [gap, setGap] = useState(2);
-  const [autoRotate, setAutoRotate] = useState(true);
+  const [autoRotate, setAutoRotate] = useState(false);
   const [cutStyle, setCutStyle] = useState<CutStyle>("corners");
   const [duplicateN, setDuplicateN] = useState(1);
 
@@ -59,6 +59,13 @@ export default function StepExport() {
     if (layout.total === 0) return;
     setBusy(true);
     try {
+      // Pre-convert all design + photo images to PDF-safe PNGs once.
+      await prewarmImageCache([
+        design.logoDataUrl,
+        design.signatureDataUrl,
+        design.customBgDataUrl,
+        ...photos.map((p) => p.dataUrl),
+      ]);
       const doc = new jsPDF({ unit: "mm", format: page.format, orientation: page.orientation });
       const { cols, rows, drawW, drawH, rotated } = layout;
       const usableW = page.w - 2 * margin;

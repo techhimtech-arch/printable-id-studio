@@ -99,20 +99,62 @@ function TemplateThumb({ tpl, active, accent, onClick }: { tpl: CardTemplate; ac
 export default function StepDesign() {
   const { design, setDesign, setStep, mapping, toggleField } = useIdStore();
 
+  // Normalize any uploaded image (PNG/JPEG/WEBP/SVG) into a PDF-safe PNG data URL.
+  // Keeps transparency, caps max dimension to keep PDF size sane.
+  const normalizeToPng = (file: File, maxDim = 1024): Promise<string> =>
+    new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onerror = () => reject(reader.error);
+      reader.onload = () => {
+        const src = reader.result as string;
+        const img = new Image();
+        img.onload = () => {
+          try {
+            const scale = Math.min(1, maxDim / Math.max(img.width || 1, img.height || 1));
+            const w = Math.max(1, Math.round((img.width || maxDim) * scale));
+            const h = Math.max(1, Math.round((img.height || maxDim) * scale));
+            const canvas = document.createElement("canvas");
+            canvas.width = w;
+            canvas.height = h;
+            const ctx = canvas.getContext("2d");
+            if (!ctx) return resolve(src);
+            ctx.clearRect(0, 0, w, h);
+            ctx.drawImage(img, 0, 0, w, h);
+            resolve(canvas.toDataURL("image/png"));
+          } catch {
+            resolve(src);
+          }
+        };
+        img.onerror = () => resolve(src);
+        img.src = src;
+      };
+      reader.readAsDataURL(file);
+    });
+
   const onLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    const r = new FileReader();
-    r.onload = () => setDesign({ logoDataUrl: r.result as string });
-    r.readAsDataURL(file);
+    try {
+      const dataUrl = await normalizeToPng(file, 512);
+      setDesign({ logoDataUrl: dataUrl });
+    } catch {
+      toast.error("Couldn't read that logo. Try a PNG or JPG.");
+    } finally {
+      e.target.value = "";
+    }
   };
 
   const onSigUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    const r = new FileReader();
-    r.onload = () => setDesign({ signatureDataUrl: r.result as string });
-    r.readAsDataURL(file);
+    try {
+      const dataUrl = await normalizeToPng(file, 768);
+      setDesign({ signatureDataUrl: dataUrl });
+    } catch {
+      toast.error("Couldn't read that signature. Try a PNG or JPG.");
+    } finally {
+      e.target.value = "";
+    }
   };
 
   const mappedFields = (Object.keys(FIELD_LABELS) as FieldKey[]).filter(
