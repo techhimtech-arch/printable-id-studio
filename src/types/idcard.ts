@@ -49,7 +49,24 @@ export type CardTemplate =
   | "horizontal-modern"
   | "custom";
 
-export type CustomElementKind = "photo" | "field" | "text" | "logo" | "signature";
+export type CustomElementKind =
+  | "photo"
+  | "field"
+  | "text"
+  | "logo"
+  | "signature"
+  | "line"
+  | "rect"
+  | "divider"
+  | "qr";
+
+export type DateFormat =
+  | "asis"
+  | "dd/mm/yyyy"
+  | "dd-mmm-yyyy"
+  | "dd mmm yyyy"
+  | "yyyy-mm-dd"
+  | "mmm dd, yyyy";
 
 /** All positions/sizes are in millimetres, relative to card top-left. */
 export interface CustomElement {
@@ -57,10 +74,12 @@ export interface CustomElement {
   kind: CustomElementKind;
   /** For kind="field": the FieldKey or "name". */
   field?: FieldKey;
-  /** For kind="text": static label text (e.g. "ID CARD"). */
+  /** For kind="text" or "divider": static label text. */
   text?: string;
   /** For kind="field": prefix shown before value (e.g. "Roll No: "). */
   labelPrefix?: string;
+  /** For date fields: per-element date format override. */
+  dateFormat?: DateFormat;
   x: number;
   y: number;
   w: number;
@@ -69,8 +88,18 @@ export interface CustomElement {
   fontFamily: "helvetica" | "times" | "courier";
   bold: boolean;
   italic: boolean;
-  color: string; // hex
+  color: string; // hex (text + line/border color)
   align: "left" | "center" | "right";
+  /** For line / divider / rect border. */
+  thickness?: number; // mm
+  /** For rect: fill color (hex) or "none". */
+  fillColor?: string;
+  /** For rect: border color (hex) or "none". */
+  borderColor?: string;
+  /** For rect: corner radius mm. */
+  radius?: number;
+  /** For qr: which field's value to encode (defaults to admissionNo or rollNo). */
+  qrSourceField?: FieldKey;
 }
 
 export interface CardDesign {
@@ -94,6 +123,8 @@ export interface CardDesign {
   customBgDataUrl: string | null;
   /** Draggable elements rendered over the background. */
   customElements: CustomElement[];
+  /** Default date format applied to date fields (per-element override available). */
+  dateFormat: DateFormat;
 }
 
 export const TEMPLATE_ORIENTATION: Record<CardTemplate, "portrait" | "landscape"> = {
