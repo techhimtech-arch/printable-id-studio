@@ -670,7 +670,7 @@ export default function CustomEditor() {
                 </>
               )}
 
-              {(selected.kind === "field" || selected.kind === "text" || selected.kind === "divider" || selected.kind === "line" || selected.kind === "qr") && (
+              {(selected.kind === "field" || selected.kind === "text" || selected.kind === "divider") && (
                 <>
                   <div className="space-y-1.5">
                     <Label className="text-xs">Font size: {selected.fontSize}pt</Label>
