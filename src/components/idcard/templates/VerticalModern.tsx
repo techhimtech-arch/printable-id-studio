@@ -39,7 +39,8 @@ export default function VerticalModern({ student, photo, mapping, design }: Card
         <div className="text-[12.5px] font-bold mt-2 px-3 truncate max-w-full text-center">{name}</div>
       </div>
 
-      <div className="px-3 mt-2 flex-1 overflow-hidden">
+      <div className="px-3 mt-2 flex-1 overflow-hidden flex flex-col">
+        <div className="flex-1">
         {fields.map((f) => {
           const col = mapping[f];
           if (!col) return null;

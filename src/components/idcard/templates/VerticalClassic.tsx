@@ -85,6 +85,20 @@ export default function VerticalClassic({ student, photo, mapping, design }: Car
         )}
       </div>
 
+      {/* Signature row above footer */}
+      {(design.signatureDataUrl || design.principalName) && (
+        <div className="px-3 pb-1 flex flex-col items-end">
+          {design.signatureDataUrl ? (
+            <img src={design.signatureDataUrl} alt="signature" className="h-5 object-contain" />
+          ) : (
+            <div className="h-5" />
+          )}
+          <div className="text-[6px] text-gray-500 leading-none">
+            {design.principalName || "Principal"}
+          </div>
+        </div>
+      )}
+
       {/* Footer band */}
       <div
         className="px-2 py-1 text-white text-center"
