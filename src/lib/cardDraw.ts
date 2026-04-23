@@ -191,7 +191,7 @@ function drawVerticalClassic({ doc, x, y, student, photo, mapping, design }: Dra
   if (photo) tryAddImage(doc, photo.dataUrl, "JPEG", px, py, pw, ph);
 
   // Name
-  const name = getValue(student, mapping, "name") || "—";
+  const name = getValue(student, mapping, "name", design) || "—";
   doc.setTextColor(20);
   doc.setFont("helvetica", "bold");
   doc.setFontSize(9);
@@ -203,7 +203,7 @@ function drawVerticalClassic({ doc, x, y, student, photo, mapping, design }: Dra
   doc.setFontSize(6.2);
   const footerH = 6;
   for (const f of fields) {
-    const v = getValue(student, mapping, f);
+    const v = getValue(student, mapping, f, design);
     if (!v) continue;
     if (fy > y + H - footerH - 4) break;
     doc.setTextColor(120);
@@ -216,7 +216,7 @@ function drawVerticalClassic({ doc, x, y, student, photo, mapping, design }: Dra
   }
 
   // Address
-  const addr = getValue(student, mapping, "address");
+  const addr = getValue(student, mapping, "address", design);
   if (addr && design.visibleFields.includes("address") && fy < y + H - footerH - 5) {
     doc.setFont("helvetica", "normal");
     doc.setTextColor(120);
@@ -306,7 +306,7 @@ function drawHorizontalClassic({ doc, x, y, student, photo, mapping, design }: D
   doc.setTextColor(rgb[0], rgb[1], rgb[2]);
   doc.setFont("helvetica", "bold");
   doc.setFontSize(9);
-  const name = getValue(student, mapping, "name") || "—";
+  const name = getValue(student, mapping, "name", design) || "—";
   safeText(doc, name, fx, fy, fmaxW, { lineHeight: 3.6, maxLines: 1 });
   fy += 4.5;
   doc.setDrawColor(rgb[0], rgb[1], rgb[2]);
@@ -317,7 +317,7 @@ function drawHorizontalClassic({ doc, x, y, student, photo, mapping, design }: D
   const fields = design.visibleFields.filter((f) => f !== "name");
   const labelW = 18;
   for (const f of fields) {
-    const v = getValue(student, mapping, f);
+    const v = getValue(student, mapping, f, design);
     if (!v) continue;
     if (fy > y + H - 7) break;
     doc.setTextColor(110);
@@ -371,7 +371,7 @@ function drawVerticalModern({ doc, x, y, student, photo, mapping, design }: Draw
   doc.rect(px, py, pw, ph, "S");
 
   // Name
-  const name = getValue(student, mapping, "name") || "—";
+  const name = getValue(student, mapping, "name", design) || "—";
   doc.setTextColor(20);
   doc.setFont("helvetica", "bold");
   doc.setFontSize(9.5);
@@ -382,7 +382,7 @@ function drawVerticalModern({ doc, x, y, student, photo, mapping, design }: Draw
   const fields = design.visibleFields.filter((f) => f !== "name");
   doc.setFontSize(6);
   for (const f of fields) {
-    const v = getValue(student, mapping, f);
+    const v = getValue(student, mapping, f, design);
     if (!v) continue;
     if (fy > y + H - 6) break;
     doc.setTextColor(140);
@@ -447,7 +447,7 @@ function drawHorizontalModern({ doc, x, y, student, photo, mapping, design }: Dr
   doc.setTextColor(20);
   doc.setFont("helvetica", "bold");
   doc.setFontSize(10);
-  const name = getValue(student, mapping, "name") || "—";
+  const name = getValue(student, mapping, "name", design) || "—";
   safeText(doc, name, fx, py + 3.5, fmaxW, { lineHeight: 3.6, maxLines: 1 });
   doc.setFont("helvetica", "normal");
   doc.setFontSize(5.5);
@@ -459,7 +459,7 @@ function drawHorizontalModern({ doc, x, y, student, photo, mapping, design }: Dr
   doc.setFontSize(6);
   const fields = design.visibleFields.filter((f) => f !== "name");
   for (const f of fields) {
-    const v = getValue(student, mapping, f);
+    const v = getValue(student, mapping, f, design);
     if (!v) continue;
     if (fy > y + H - 4) break;
     doc.setTextColor(120);
