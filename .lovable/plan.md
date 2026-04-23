@@ -1,66 +1,80 @@
 
 
-## Problem
+## Scope (existing ko disturb nahi karunga)
 
-Jab visible fields zyada ho ya values lambi ho:
-- **Preview templates** (4 built-in): fixed font sizes use karte hain — fields card ke neeche niche overflow karke signature/footer ke upar chadh jaate hain ya card boundary cross karte hain.
-- **PDF export** mein ek hard `break` lagta hai jo extra fields silently drop kar deta hai (without user knowing).
-- **Custom mode** mein elements absolute positioned hain — long text element ke bahar nikalti hai.
+`CustomEditor.tsx` mein already snap, grid, alignment guides, aur mapped-fields detection sab kuch hai. Bas 2 chhote upgrades chahiye + 1 helper text.
 
-User chahta hai: spacing aur font auto-adjust ho taaki content card ke andar hi rahe.
+## Changes
 
-## Fix plan
+### 1. `src/components/idcard/CustomEditor.tsx` — "Add all mapped fields" button
 
-### 1. Auto-fit utility hook banao
-Naya helper `src/lib/auto-fit.ts`:
-- `computeFieldsLayout(fieldsCount, availableHeight, addressIncluded)` → returns `{ rowHeight, fontSize, labelSize, gap, maxValueLines }`.
-- Logic: jitne fields zyada, utna row height aur font size proportionally chhota (clamped between min/max). Address ko 2-line se 1-line pe bhi gira sakte hain agar bahut tight ho.
-- Ek dusra helper: `truncateToFit(text, maxChars)` — value lambi ho toh ellipsis.
+Existing "Add element toolbar" mein ek naya button:
 
-### 2. Preview templates — auto-shrink fields area
-Files:
-- `src/components/idcard/templates/VerticalClassic.tsx`
-- `src/components/idcard/templates/VerticalModern.tsx`
-- `src/components/idcard/templates/HorizontalClassic.tsx`
-- `src/components/idcard/templates/HorizontalModern.tsx`
+- **"Auto-add all fields"** — ek click pe:
+  - `mappedFieldKeys` (already computed) pe loop
+  - Har field ke liye ek `kind: "field"` element add — left column mein neatly stacked grid mein (e.g. x=4mm, y starts at 30mm, row gap 6mm)
+  - Naam pehle, bold, slightly bigger; baaki fields chhote
+  - Agar `photo` mapped hai toh ek photo box bhi add (top-right area)
+- Button disabled jab koi field mapped na ho, with tooltip
+- Toast: "Added N fields — drag karke arrange karo"
 
-Changes per template:
-- Card ka outer `div` already fixed `width × height` use karta hai — `overflow-hidden` add karo (jaha missing hai) taaki card boundary se kuch bahar na nikle (safety net).
-- Fields list ke liye `computeFieldsLayout()` call karke dynamic `fontSize`, row height, gap apply karo based on `fields.length` aur available pixel height (card height − header − photo − signature − footer).
-- Address field ke liye dynamic `WebkitLineClamp` (1 ya 2 based on space).
-- Long values ke liye `truncate` already lagaya hua hai — value ke liye dynamic `max-width` calculate karo.
+Bahar koi state/structure change nahi — sirf existing `addElement()` ko loop mein call karega.
 
-### 3. PDF export — same auto-fit logic mirror karo
-File: `src/lib/cardDraw.ts`
+### 2. `src/lib/bg-eraser.ts` — naya canvas-based erase helper
 
-Har built-in template draw function (`drawVerticalClassic`, `drawHorizontalClassic`, `drawVerticalModern`, `drawHorizontalModern`):
-- Loop start hone se pehle `computeFieldsLayout()` se font size + row height nikaalo (mm units mein, browser version se proportional).
-- Hard `break` hata ke graceful: agar fields fit nahi hote toh font size ek aur step chhota karo, na ki silently drop.
-- Result: preview aur PDF dono same density dikhayenge, aur jitne fields user ne select kiye sab visible honge.
+Naya file with one exported function:
 
-### 4. Custom mode — element overflow guard
-File: `src/components/idcard/templates/CustomTemplate.tsx` aur `src/lib/cardDraw.ts` (custom draw path):
-- Har element pe `overflow: hidden` apply karo (preview mein) so text element ki value uske own `w × h` box ke bahar na jaye.
-- Auto-shrink option: agar element ke andar text fit nahi ho raha toh font size step-down (preview + PDF dono mein same logic).
-- Optional: CustomEditor mein "Auto-shrink text" toggle per element.
+```ts
+eraseRectsFromImage(dataUrl: string, rectsMm: {x,y,w,h}[], cardWmm, cardHmm): Promise<string>
+```
 
-### 5. Card outer overflow safety
-Sab built-in templates ke root `div` pe pakka `overflow-hidden` lage (already mostly hai, verify karenge). Isse worst case mein bhi kuch bahar nahi nikalega — text bas clip hoga.
+- Image ko offscreen canvas pe load
+- Diye gaye mm rectangles ko white (ya transparent) se fill
+- Updated PNG data URL return
+
+Pure utility — koi UI side-effect nahi.
+
+### 3. `src/components/idcard/CustomEditor.tsx` — eraser mode UI
+
+Existing canvas pe ek toggle add:
+
+- Toolbar mein **"Erase"** button (next to Snap/Grid)
+- Erase mode ON hone par:
+  - Cursor crosshair
+  - Mouse drag se canvas pe ek rectangle draw (overlay div, semi-transparent red)
+  - Mouse up pe `eraseRectsFromImage()` call → naya `customBgDataUrl` set
+  - Element drag/select disabled jab tak erase mode ON ho
+- "Reset background" button — original BG restore karne ke liye (ek `originalBgDataUrl` ref mein store)
+- Erase mode OFF karne pe normal element editing wapas
+
+State additions: `eraseMode: boolean`, `eraseDraw: {x,y,w,h} | null`, `originalBgRef = useRef<string|null>`.
+
+### 4. `src/components/idcard/StepDesign.tsx` — helper text
+
+`<CustomEditor />` render hone se thoda upar (jab template === "custom") ek chhota info banner:
+
+> 💡 **Tip:** Apni finished card design (Photoshop/Canva se exported PNG/JPG) yahan **background** ke roop mein upload karo. Phir **"Auto-add all fields"** click karo — saare mapped Excel fields ek saath aa jayenge. Drag karke jagah set karo, aur Excel ke har student ke liye PDF mein same design use hogi.
+
+Sirf ek `<div>` block — already-existing CustomEditor invocation aur baaki kuch nahi badlega.
 
 ## Files to update
 
-- `src/lib/auto-fit.ts` — naya shared helper (font size + row height calculator)
-- `src/components/idcard/templates/VerticalClassic.tsx` — dynamic fields layout
-- `src/components/idcard/templates/VerticalModern.tsx` — dynamic fields layout
-- `src/components/idcard/templates/HorizontalClassic.tsx` — dynamic fields layout
-- `src/components/idcard/templates/HorizontalModern.tsx` — dynamic fields layout
-- `src/components/idcard/templates/CustomTemplate.tsx` — element overflow + optional auto-shrink
-- `src/lib/cardDraw.ts` — same auto-fit applied to all draw functions
+- `src/components/idcard/CustomEditor.tsx` — Auto-add button, Erase toggle + draw overlay, eraser integration
+- `src/lib/bg-eraser.ts` — naya canvas-based erase utility (new file)
+- `src/components/idcard/StepDesign.tsx` — chhota tip banner upar Custom editor ke
+
+## Kya nahi karunga
+
+- Snap-to-grid / alignment guides — already exist karte hain, dubara nahi banaunga
+- Existing element types ya layout logic ko touch nahi karunga
+- Excel mapping / export pipeline ko nahi chhedunga
+- Built-in templates ko bilkul nahi disturb karunga
 
 ## Result
 
-- Jitne bhi fields select karo, sab card ke andar fit honge (font small ho jayega but drop nahi).
-- Lambi values bhi clip ho jayengi, card boundary cross nahi karengi.
-- Preview = PDF: dono same dikhenge.
-- Custom mode mein bhi text apne box ke andar rahega.
+1. Background image upload karo
+2. Erase tool se purane name/photo blocks white kar do (Photoshop ki zarurat nahi)
+3. "Auto-add all fields" click — saare fields aa gaye
+4. Drag karke jagah set karo (one-time, ~5 min)
+5. Export — saare students ke cards ek hi design ke saath ban jayenge
 
