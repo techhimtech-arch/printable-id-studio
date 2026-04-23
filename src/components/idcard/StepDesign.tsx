@@ -260,7 +260,21 @@ export default function StepDesign() {
         </div>
       </div>
 
-      {design.template === "custom" && <CustomEditor />}
+      {design.template === "custom" && (
+        <div className="space-y-3">
+          <div className="flex items-start gap-3 p-3 bg-primary/5 border border-primary/20 rounded-md">
+            <Wand2 className="h-4 w-4 mt-0.5 text-primary shrink-0" />
+            <div className="text-xs leading-relaxed">
+              <div className="font-medium text-sm mb-0.5">💡 Use your own finished design</div>
+              Apni finished card design (Photoshop / Canva se exported <strong>PNG / JPG</strong>) yahaan <strong>background</strong> ke roop mein upload karo.
+              Phir <strong>Auto-add fields</strong> click karo — saare mapped Excel fields ek saath aa jayenge.
+              Drag karke jagah set karo, aur Excel ke har student ke liye PDF mein same design use hogi.
+              Agar background mein purane name/photo placeholders hain toh <strong>Erase</strong> tool se white-out kardo — Photoshop ki zarurat nahi.
+            </div>
+          </div>
+          <CustomEditor />
+        </div>
+      )}
 
       <div className="grid md:grid-cols-2 gap-5">
         <div className="space-y-2">
