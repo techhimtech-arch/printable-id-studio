@@ -401,25 +401,34 @@ function drawHorizontalClassic({ doc, x, y, student, photo, mapping, design }: D
   doc.setLineWidth(0.3);
   doc.line(fx, fy - 1, fx + 18, fy - 1);
 
-  doc.setFontSize(6.2);
   const fields = design.visibleFields.filter((f) => f !== "name");
+  const addressIncluded = fields.includes("address");
   const labelW = 18;
+  const available = Math.max(4, (y + H - 5) - fy);
+  const layout = computeFieldsLayout({
+    fieldsCount: fields.length,
+    availableHeight: available,
+    addressIncluded,
+    unit: "mm",
+  });
   for (const f of fields) {
     const v = getValue(student, mapping, f, design);
     if (!v) continue;
-    if (fy > y + H - 7) break;
     doc.setTextColor(110);
     doc.setFont("helvetica", "normal");
+    doc.setFontSize(layout.labelSize);
     doc.text(FIELD_LABELS[f], fx, fy);
     doc.setTextColor(35);
     doc.setFont("helvetica", "bold");
+    doc.setFontSize(layout.fontSize);
     doc.text(":", fx + labelW - 1, fy);
     const lines = doc.splitTextToSize(String(v), fmaxW - labelW) as string[];
-    const max = f === "address" ? 2 : 1;
+    const max = f === "address" ? layout.maxAddressLines : 1;
     const shown = lines.slice(0, max);
     if (lines.length > max) shown[shown.length - 1] = shown[shown.length - 1].replace(/.{1,3}$/, "…");
-    shown.forEach((ln, i) => doc.text(ln, fx + labelW + 1, fy + i * 2.8));
-    fy += 2.8 * shown.length + 0.8;
+    const lh = layout.fontSize * 0.45;
+    shown.forEach((ln, i) => doc.text(ln, fx + labelW + 1, fy + i * lh));
+    fy += lh * shown.length + layout.gap;
   }
 }
 
