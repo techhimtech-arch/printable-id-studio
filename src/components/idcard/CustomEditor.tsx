@@ -509,7 +509,34 @@ export default function CustomEditor() {
         <Button size="sm" variant="outline" onClick={() => addElement({ kind: "qr", w: 14, h: 14 })} title="QR code">
           <QrCode className="h-3.5 w-3.5" /> QR
         </Button>
-        <div className="ml-auto flex gap-1.5">
+        <div className="ml-auto flex gap-1.5 flex-wrap">
+          <Button
+            size="sm"
+            variant="secondary"
+            onClick={autoAddAllFields}
+            disabled={mappedFieldKeys.length === 0}
+            title={mappedFieldKeys.length === 0 ? "Map fields in Step 2 first" : "Add all mapped Excel fields at once"}
+          >
+            <Wand2 className="h-3.5 w-3.5" /> Auto-add fields
+          </Button>
+          <Button
+            size="sm"
+            variant={eraseMode ? "default" : "outline"}
+            onClick={() => setEraseMode((s) => !s)}
+            disabled={!design.customBgDataUrl}
+            title="Drag on the card to white-out areas of the background"
+          >
+            <Eraser className="h-3.5 w-3.5" /> Erase
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={resetBackground}
+            disabled={!originalBgRef.current}
+            title="Restore original uploaded background"
+          >
+            <RotateCcw className="h-3.5 w-3.5" /> Reset BG
+          </Button>
           <Button
             size="sm"
             variant={snapEnabled ? "default" : "outline"}
@@ -528,6 +555,12 @@ export default function CustomEditor() {
           </Button>
         </div>
       </div>
+
+      {eraseMode && (
+        <div className="text-xs px-3 py-2 bg-destructive/10 border border-destructive/30 rounded text-destructive">
+          Erase mode ON — drag on the card to white-out areas (e.g. old name/photo placeholders). Click <strong>Erase</strong> again to exit.
+        </div>
+      )}
 
       <div className="grid lg:grid-cols-[1fr_280px] gap-4">
         {/* Canvas */}
