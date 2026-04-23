@@ -13,8 +13,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Trash2, Image as ImageIcon, Type, User, Plus, AlignLeft, AlignCenter, AlignRight, Bold, Italic, X } from "lucide-react";
+import { Trash2, Image as ImageIcon, Type, User, Plus, AlignLeft, AlignCenter, AlignRight, Bold, Italic, X, Minus, Square, QrCode, SeparatorHorizontal } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { DATE_FORMAT_OPTIONS } from "@/lib/format-date";
 
 /** On-screen scale for the editor — larger than preview so dragging is precise. */
 const PX_PER_MM = 6;
