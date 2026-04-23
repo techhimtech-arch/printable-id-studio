@@ -1,72 +1,49 @@
 
 
-## A4 sheet pe zyada cards fit karne ke options
+## Problem
 
-Abhi `StepExport.tsx` mein simple grid hai: `(pageW-8)/(cardW+4)` cols × rows, 4mm gap, 4mm margin. Standard ID card 54×86mm pe A4 (210×297) mein sirf **3×3 = 9 cards** aate hain. Horizontal 86×54 pe bhi 2×5 = 10. Usse zyada fit karne ke liye layout control chahiye.
+`VerticalClassic` template mein principal signature ka koi slot hi nahi hai. Aur jab "Customize this template" karte ho toh `templateToCustomElements()` mein bhi vertical-classic ke andar signature element generate nahi hota (sirf horizontal-classic mein hota hai). Isi wajah se signature upload karne ke baad bhi card pe nahi dikhta, aur custom mode mein bhi missing rehta hai. Saath hi `vertical-modern` aur `horizontal-modern` mein bhi signature missing hai.
 
-### Kya options de sakte hain user ko
+Custom mode mein "+ Field" dropdown sirf un fields ko dikhata hai jo Step 2 mein mapped hain — agar koi field add nahi ho rahi toh wo mapping issue hai (separate, niche cover karunga).
 
-Export step pe ek **"Sheet layout" panel** add karunga jahan user ye control kar sake:
+## Fix plan
 
-**1. Page size + orientation**
-- A4 Portrait (210×297) — default
-- A4 Landscape (297×210) — horizontal cards ke liye zyada fit
-- Letter (216×279)
-- A3 (297×420) — double cards per sheet
+### 1. `VerticalClassic.tsx` mein signature + principal name footer add karo
+- Footer band ke upar ek chhota signature row: right side mein signature image (height ~24px) + "Principal" label, agar `design.signatureDataUrl` ya `design.principalName` set hai.
+- Layout: Fields list ke neeche `mt-auto` se push karke, footer accent band ke just upar.
+- Agar dono empty hain toh kuch render mat karo (clean fallback).
 
-**2. Margins (mm)**
-- Slider: 3mm – 15mm (default 5mm). Kam margin = zyada cards.
+### 2. `VerticalModern.tsx` aur `HorizontalModern.tsx` mein bhi same signature slot add karo
+- Consistency ke liye chaaron built-in templates mein principal signature dikhe.
+- Vertical-modern: footer area mein center-right.
+- Horizontal-modern: bottom-right of right text panel.
 
-**3. Gap between cards (mm)**
-- Slider: 0mm – 6mm (default 2mm). 0 = cards touch, saving most space.
+### 3. `templateToCustomElements()` mein signature element add karo har template ke liye
+File: `src/lib/template-to-custom.ts`
+- `vertical-classic` case mein: signature shape (right-bottom, ~20×6mm) + "Principal" text label below it, footer ke just upar.
+- `vertical-modern` case mein: same approach, niche center-right.
+- `horizontal-modern` case mein: bottom-right corner pe signature + label.
+- (`horizontal-classic` mein already hai, usko verify karunga.)
 
-**4. Rotate cards to fit more (auto-pack)**
-- Checkbox: "Rotate cards 90° if it fits more per page"
-- Logic: dono orientations try karo (portrait card pe landscape card bhi), jo zyada fit kare wo use karo. Ye A4 landscape + horizontal card ko 5×2=10 se 2×5=10 se comparable rakhta hai, but kuch combos mein +20-30% gain deta hai.
+Isse jab user "Customize this template" press karega toh signature element bhi editable canvas pe aa jayega — drag/resize/delete kar sakega.
 
-**5. Duplicate same card N times (bulk print mode)**
-- Agar user ek hi student ka 10 copies chahiye (rare but useful), ye optional toggle. Default off.
+### 4. Custom editor mein "Principal name" text helper
+`CustomEditor.tsx` toolbar mein "Add → Principal" quick button — ek pre-filled text element insert kare jisme `design.principalName` value ho. Ye optional convenience hai agar user manually principal label chahiye.
 
-**6. Live preview**
-- Panel ke saath ek mini A4 preview SVG/div — real time dikhayega "ye settings se page pe X cards aayenge, total Y pages". User slider move kare toh turant pata chale.
+### 5. PDF export mein verify karo
+`src/lib/cardDraw.ts` mein `vertical-classic`/`vertical-modern`/`horizontal-modern` ke draw functions mein bhi same signature drawing add karunga taaki preview aur PDF match kare. (Custom mode wala signature already supported hai PDF mein.)
 
-**7. Cut guides dropdown** (already partial hai)
-- "None" / "Corner crop marks" / "Full cut lines between cards" (dotted lines grid — easiest for scissors/paper cutter)
+### "Field add nahi ho rahi" — clarification
 
-### Expected results user ke liye
-
-- Standard 54×86mm vertical card, 5mm margin, 2mm gap → **9 cards/A4** (current)
-- Same card, 3mm margin, 0mm gap → **12 cards/A4** (+33%)
-- Same card but A3 paper → **20 cards/sheet**
-- Chhota custom size (e.g. 50×80mm), 3mm margin, 1mm gap → **15 cards/A4**
-- Horizontal 86×54 on A4 landscape, 0mm gap → **10 cards** but with cleaner cutting
-
-### Technical changes
-
-**`src/components/idcard/StepExport.tsx`** — replace current fixed-layout logic:
-- Add state: `pageSize` ('a4'|'a4-landscape'|'letter'|'a3'), `margin` (number mm), `gap` (number mm), `autoRotate` (bool), `cutStyle` ('none'|'corners'|'grid').
-- Compute `cols/rows` from chosen page dims and card dims + gap + margin.
-- If `autoRotate`: also compute rotated-card fit `(cardH, cardW)` and pick whichever gives more per page; when drawing rotated, use `jsPDF` transform (save state, translate to card center, rotate 90°, draw, restore).
-- Replace PDF init: `new jsPDF({ unit: 'mm', format: pageSize.startsWith('a4') ? 'a4' : pageSize, orientation: pageSize === 'a4-landscape' ? 'landscape' : 'portrait' })`.
-- Sliders + selects UI using existing shadcn `Slider`, `Select`, `Switch`.
-- Live stats badge: `"{cardsPerPage} cards × {totalPages} pages = {students.length} total"`.
-
-**`src/lib/cardDraw.ts`** — add:
-- `drawCutGridLines(doc, margin, gap, cols, rows, cardW, cardH, pageW, pageH)` — dotted lines on gap centers so user ki scissors ek straight line pe chale.
-- `drawCardRotated(doc, x, y, cardW, cardH, drawFn)` helper for auto-rotate.
-
-**Mini preview** — small component in `StepExport.tsx`: a div with aspect ratio of selected page, children divs positioned per computed layout, so user visually confirms before downloading.
+Custom editor ka "+ Field" dropdown sirf woh fields show karta hai jo **Step 2 (Mapping)** mein CSV column ke saath map ki gayi hain. Agar wahaan koi field map nahi ki gayi, toh dropdown khaali ya short dikhega. Fix ke saath ek hint add karunga:
+- Agar `mappedFieldKeys.length === 0` ho, toh "+ Field" dropdown ke neeche chhoti note: *"No fields mapped yet — go to Step 2: Map columns to add fields."*
 
 ### Files touched
 
-- `src/components/idcard/StepExport.tsx` — new layout panel + mini preview + updated PDF generation
-- `src/lib/cardDraw.ts` — rotation helper + full-grid cut lines
-
-### Kya chahiye aapko?
-
-<lov-actions>
-<lov-suggestion message="Haan sab kuch add karo — page size, margins, gap, auto-rotate, cut-style dropdown, aur live mini preview.">Sab options + live preview add karo</lov-suggestion>
-<lov-suggestion message="Sirf basic: page size select (A4/A4 landscape/A3) + margin slider + gap slider. Auto-rotate aur mini preview skip karo.">Simple version — 3 sliders only</lov-suggestion>
-<lov-suggestion message="Presets do: 'Maximum cards (tight)', 'Balanced', 'Easy to cut (wide gaps)'. Sliders ke bajaye 3 buttons.">Presets-only (no sliders)</lov-suggestion>
-</lov-actions>
+- `src/components/idcard/templates/VerticalClassic.tsx` — signature + principal label
+- `src/components/idcard/templates/VerticalModern.tsx` — same
+- `src/components/idcard/templates/HorizontalModern.tsx` — same
+- `src/lib/template-to-custom.ts` — signature element teeno templates ke liye
+- `src/lib/cardDraw.ts` — PDF mein signature draw karna teeno templates ke liye
+- `src/components/idcard/CustomEditor.tsx` — "Principal" quick-add button + empty-fields hint
 
