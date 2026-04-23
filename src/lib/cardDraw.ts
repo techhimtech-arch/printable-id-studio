@@ -125,10 +125,14 @@ interface DrawCtx {
   design: CardDesign;
 }
 
-function getValue(student: Student, mapping: ColumnMapping, key: string) {
+function getValue(student: Student, mapping: ColumnMapping, key: string, design?: CardDesign) {
   const col = (mapping as any)[key];
   if (!col) return "";
-  return String(student.row[col] ?? "");
+  let v = String(student.row[col] ?? "");
+  if (DATE_FIELDS.has(key as FieldKey) && design) {
+    v = formatDate(v, design.dateFormat);
+  }
+  return v;
 }
 
 function tryAddImage(doc: jsPDF, dataUrl: string, fmt: "JPEG" | "PNG", x: number, y: number, w: number, h: number) {
