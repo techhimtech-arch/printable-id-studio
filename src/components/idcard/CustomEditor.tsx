@@ -235,7 +235,10 @@ export default function CustomEditor() {
     if (el.kind === "text") return el.text || "Text";
     if (el.kind === "field") {
       const col = el.field ? mapping[el.field] : null;
-      const v = col && sample ? sample.row[col] : "";
+      let v = col && sample ? sample.row[col] : "";
+      if (el.field === "dob" && v) {
+        v = formatDate(String(v), el.dateFormat || design.dateFormat);
+      }
       const fallback = el.field ? FIELD_LABELS[el.field] : "Field";
       return (el.labelPrefix || "") + (v || `[${fallback}]`);
     }
