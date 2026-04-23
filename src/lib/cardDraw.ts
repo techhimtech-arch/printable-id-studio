@@ -474,29 +474,39 @@ function drawVerticalModern({ doc, x, y, student, photo, mapping, design }: Draw
   doc.setFontSize(9.5);
   safeText(doc, name, x + W / 2, py + ph + 5, W - 6, { align: "center", maxLines: 1 });
 
-  // Fields with thin rules
+  // Fields with thin rules — auto-fit
   let fy = py + ph + 9;
   const fields = design.visibleFields.filter((f) => f !== "name");
-  doc.setFontSize(6);
+  const addressIncluded = fields.includes("address");
+  const sigReserve = (design.signatureDataUrl || design.principalName) ? 11 : 3;
+  const available = Math.max(4, (y + H - sigReserve) - fy);
+  const layout = computeFieldsLayout({
+    fieldsCount: fields.length,
+    availableHeight: available,
+    addressIncluded,
+    unit: "mm",
+  });
   for (const f of fields) {
     const v = getValue(student, mapping, f, design);
     if (!v) continue;
-    if (fy > y + H - 6) break;
     doc.setTextColor(140);
     doc.setFont("helvetica", "normal");
+    doc.setFontSize(layout.labelSize);
     doc.text(FIELD_LABELS[f].toUpperCase(), x + 3, fy);
     doc.setTextColor(30);
     doc.setFont("helvetica", "bold");
+    doc.setFontSize(layout.fontSize);
     const lines = doc.splitTextToSize(String(v), 28) as string[];
-    const max = f === "address" ? 2 : 1;
+    const max = f === "address" ? layout.maxAddressLines : 1;
     const shown = lines.slice(0, max);
     if (lines.length > max) shown[shown.length - 1] = shown[shown.length - 1].replace(/.{1,3}$/, "…");
-    shown.forEach((ln, i) => doc.text(ln, x + W - 3, fy + i * 2.6, { align: "right" }));
-    fy += 2.6 * shown.length + 0.6;
+    const lh = layout.fontSize * 0.42;
+    shown.forEach((ln, i) => doc.text(ln, x + W - 3, fy + i * lh, { align: "right" }));
+    fy += lh * shown.length + layout.gap * 0.5;
     doc.setDrawColor(235);
     doc.setLineWidth(0.1);
-    doc.line(x + 3, fy - 0.5, x + W - 3, fy - 0.5);
-    fy += 1;
+    doc.line(x + 3, fy - 0.3, x + W - 3, fy - 0.3);
+    fy += layout.gap * 0.6;
   }
 
   // Signature near bottom-right
