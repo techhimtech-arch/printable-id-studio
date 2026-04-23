@@ -535,9 +535,9 @@ export default function CustomEditor() {
                 </Button>
               </div>
 
-              {selected.kind === "text" && (
+              {(selected.kind === "text" || selected.kind === "divider") && (
                 <div className="space-y-1.5">
-                  <Label className="text-xs">Text</Label>
+                  <Label className="text-xs">{selected.kind === "divider" ? "Label (optional)" : "Text"}</Label>
                   <Input
                     value={selected.text || ""}
                     onChange={(e) => updateCustomElement(selected.id, { text: e.target.value })}
@@ -568,6 +568,104 @@ export default function CustomEditor() {
                       value={selected.labelPrefix || ""}
                       onChange={(e) => updateCustomElement(selected.id, { labelPrefix: e.target.value })}
                     />
+                  </div>
+                  {selected.field === "dob" && (
+                    <div className="space-y-1.5">
+                      <Label className="text-xs">Date format (this field)</Label>
+                      <Select
+                        value={selected.dateFormat || design.dateFormat}
+                        onValueChange={(v) => updateCustomElement(selected.id, { dateFormat: v as any })}
+                      >
+                        <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          {DATE_FORMAT_OPTIONS.map((o) => (
+                            <SelectItem key={o.value} value={o.value} className="text-xs">{o.label}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+                </>
+              )}
+
+              {selected.kind === "qr" && (
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Encode field</Label>
+                  <Select
+                    value={selected.qrSourceField || "admissionNo"}
+                    onValueChange={(v) => updateCustomElement(selected.id, { qrSourceField: v as FieldKey })}
+                  >
+                    <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {mappedFieldKeys.map((f) => (
+                        <SelectItem key={f} value={f}>{FIELD_LABELS[f]}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-[10px] text-muted-foreground">QR will scan to this field's value for each student.</p>
+                </div>
+              )}
+
+              {(selected.kind === "line" || selected.kind === "divider" || selected.kind === "rect") && (
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Thickness: {(selected.thickness ?? 0.4).toFixed(2)} mm</Label>
+                  <Slider
+                    min={0.1}
+                    max={3}
+                    step={0.1}
+                    value={[selected.thickness ?? 0.4]}
+                    onValueChange={([v]) => updateCustomElement(selected.id, { thickness: v })}
+                  />
+                </div>
+              )}
+
+              {selected.kind === "rect" && (
+                <>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Corner radius: {(selected.radius ?? 0).toFixed(1)} mm</Label>
+                    <Slider
+                      min={0}
+                      max={10}
+                      step={0.5}
+                      value={[selected.radius ?? 0]}
+                      onValueChange={([v]) => updateCustomElement(selected.id, { radius: v })}
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Fill color</Label>
+                    <div className="flex gap-2 items-center">
+                      <input
+                        type="color"
+                        value={selected.fillColor && selected.fillColor !== "none" ? selected.fillColor : "#ffffff"}
+                        onChange={(e) => updateCustomElement(selected.id, { fillColor: e.target.value })}
+                        className="h-8 w-12 rounded border cursor-pointer"
+                      />
+                      <Button
+                        size="sm"
+                        variant={selected.fillColor === "none" ? "default" : "outline"}
+                        onClick={() => updateCustomElement(selected.id, { fillColor: selected.fillColor === "none" ? "#e5e7eb" : "none" })}
+                      >
+                        {selected.fillColor === "none" ? "No fill" : "Remove fill"}
+                      </Button>
+                    </div>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Border color</Label>
+                    <div className="flex gap-2 items-center">
+                      <input
+                        type="color"
+                        value={selected.borderColor && selected.borderColor !== "none" ? selected.borderColor : "#111111"}
+                        onChange={(e) => updateCustomElement(selected.id, { borderColor: e.target.value })}
+                        className="h-8 w-12 rounded border cursor-pointer"
+                      />
+                      <Button
+                        size="sm"
+                        variant={selected.borderColor === "none" ? "default" : "outline"}
+                        onClick={() => updateCustomElement(selected.id, { borderColor: selected.borderColor === "none" ? "#111111" : "none" })}
+                      >
+                        {selected.borderColor === "none" ? "No border" : "Remove border"}
+                      </Button>
+                    </div>
                   </div>
                 </>
               )}
