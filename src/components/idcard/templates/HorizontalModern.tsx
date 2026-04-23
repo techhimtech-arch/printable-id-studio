@@ -60,6 +60,16 @@ export default function HorizontalModern({ student, photo, mapping, design }: Ca
               );
             })}
           </div>
+          {(design.signatureDataUrl || design.principalName) && (
+            <div className="absolute bottom-3 right-3 flex flex-col items-end">
+              {design.signatureDataUrl && (
+                <img src={design.signatureDataUrl} alt="signature" className="h-5 object-contain" />
+              )}
+              <div className="text-[6.5px] text-gray-500 leading-none">
+                {design.principalName || "Principal"}
+              </div>
+            </div>
+          )}
         </div>
       </div>
 

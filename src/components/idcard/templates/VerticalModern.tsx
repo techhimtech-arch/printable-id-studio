@@ -57,6 +57,17 @@ export default function VerticalModern({ student, photo, mapping, design }: Card
             </div>
           );
         })}
+        </div>
+        {(design.signatureDataUrl || design.principalName) && (
+          <div className="flex flex-col items-center pt-1">
+            {design.signatureDataUrl && (
+              <img src={design.signatureDataUrl} alt="signature" className="h-5 object-contain" />
+            )}
+            <div className="text-[6.5px] text-gray-500 leading-none mt-0.5">
+              {design.principalName || "Principal"}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
