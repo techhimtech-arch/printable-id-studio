@@ -575,25 +575,35 @@ function drawHorizontalModern({ doc, x, y, student, photo, mapping, design }: Dr
   doc.setTextColor(rgb[0], rgb[1], rgb[2]);
   doc.text("STUDENT", fx, py + 6.5);
 
-  // Fields
+  // Fields — auto-fit
   let fy = py + 10.5;
-  doc.setFontSize(6);
   const fields = design.visibleFields.filter((f) => f !== "name");
+  const addressIncluded = fields.includes("address");
+  const sigReserve = (design.signatureDataUrl || design.principalName) ? 10 : 3;
+  const available = Math.max(4, (y + H - sigReserve) - fy);
+  const layout = computeFieldsLayout({
+    fieldsCount: fields.length,
+    availableHeight: available,
+    addressIncluded,
+    unit: "mm",
+  });
   for (const f of fields) {
     const v = getValue(student, mapping, f, design);
     if (!v) continue;
-    if (fy > y + H - 4) break;
     doc.setTextColor(120);
     doc.setFont("helvetica", "normal");
+    doc.setFontSize(layout.labelSize);
     doc.text(FIELD_LABELS[f], fx, fy);
     doc.setTextColor(30);
     doc.setFont("helvetica", "bold");
+    doc.setFontSize(layout.fontSize);
     const lines = doc.splitTextToSize(String(v), fmaxW) as string[];
-    const max = f === "address" ? 2 : 1;
+    const max = f === "address" ? layout.maxAddressLines : 1;
     const shown = lines.slice(0, max);
     if (lines.length > max) shown[shown.length - 1] = shown[shown.length - 1].replace(/.{1,3}$/, "…");
-    shown.forEach((ln, i) => doc.text(ln, x + W - 3, fy + i * 2.6, { align: "right" }));
-    fy += 2.6 * shown.length + 1.2;
+    const lh = layout.fontSize * 0.42;
+    shown.forEach((ln, i) => doc.text(ln, x + W - 3, fy + i * lh, { align: "right" }));
+    fy += lh * shown.length + layout.gap;
   }
 
   // Bottom hairline
