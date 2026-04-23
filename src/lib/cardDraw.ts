@@ -662,3 +662,68 @@ export function drawCropMarks(doc: jsPDF, x: number, y: number, w: number, h: nu
   doc.line(x + w + 0.3, y + h, x + w + m, y + h);
   doc.line(x + w, y + h + 0.3, x + w, y + h + m);
 }
+
+/** Draw full dotted grid lines across the page in the gap centers between cards. */
+export function drawCutGridLines(
+  doc: jsPDF,
+  marginX: number,
+  marginY: number,
+  gap: number,
+  cols: number,
+  rows: number,
+  cardW: number,
+  cardH: number,
+  pageW: number,
+  pageH: number,
+) {
+  doc.setDrawColor(170);
+  doc.setLineWidth(0.08);
+  // Vertical lines
+  for (let c = 0; c <= cols; c++) {
+    const x = c === 0 ? marginX - gap / 2 : marginX + c * cardW + (c - 0.5) * gap;
+    if (x < 1 || x > pageW - 1) continue;
+    drawDashedLine(doc, x, 2, x, pageH - 2, 0.8, 0.8);
+  }
+  // Horizontal lines
+  for (let r = 0; r <= rows; r++) {
+    const y = r === 0 ? marginY - gap / 2 : marginY + r * cardH + (r - 0.5) * gap;
+    if (y < 1 || y > pageH - 1) continue;
+    drawDashedLine(doc, 2, y, pageW - 2, y, 0.8, 0.8);
+  }
+}
+
+/** Run a draw callback with the canvas rotated 90° around the card center. */
+export function withRotatedCard(
+  doc: jsPDF,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  draw: (nx: number, ny: number, nw: number, nh: number) => void,
+) {
+  // Rotate 90° around the card's center, then draw a w×h card at the rotated origin.
+  const cx = x + w / 2;
+  const cy = y + h / 2;
+  // After 90° rotation around (cx,cy), the new top-left of an h×w rectangle is:
+  const nx = cx - h / 2;
+  const ny = cy - w / 2;
+  // jsPDF .saveGraphicsState / .restoreGraphicsState + matrix transform via internal API
+  // Using the documented helpers:
+  // @ts-expect-error - jsPDF advanced API
+  doc.saveGraphicsState();
+  // Translate to center, rotate, translate back
+  // jsPDF supports doc.context2d? Not always. Use Matrix:
+  // @ts-expect-error - jsPDF advanced API
+  const Matrix = doc.Matrix || ((a: number, b: number, c: number, d: number, e: number, f: number) => ({ a, b, c, d, e, f }));
+  const cos = 0;
+  const sin = 1;
+  // translate(cx,cy) * rotate(90) * translate(-cx,-cy)
+  // Resulting matrix: [cos, sin, -sin, cos, cx - cos*cx + sin*cy, cy - sin*cx - cos*cy]
+  const e = cx - cos * cx + sin * cy;
+  const f = cy - sin * cx - cos * cy;
+  // @ts-expect-error - jsPDF advanced API
+  doc.setCurrentTransformationMatrix?.(new Matrix(cos, sin, -sin, cos, e, f));
+  draw(nx, ny, h, w);
+  // @ts-expect-error - jsPDF advanced API
+  doc.restoreGraphicsState();
+}
