@@ -1,6 +1,30 @@
 import type jsPDF from "jspdf";
-import type { CardDesign, ColumnMapping, PhotoFile, Student } from "@/types/idcard";
+import QRCode from "qrcode";
+import type { CardDesign, ColumnMapping, PhotoFile, Student, CustomElement, FieldKey } from "@/types/idcard";
 import { FIELD_LABELS } from "@/types/idcard";
+import { formatDate } from "@/lib/format-date";
+
+const DATE_FIELDS = new Set<FieldKey>(["dob"]);
+
+function drawQrToPdf(doc: jsPDF, value: string, x: number, y: number, size: number, color: string) {
+  try {
+    const qr = QRCode.create(value || " ", { errorCorrectionLevel: "M" });
+    const modules = qr.modules;
+    const n = modules.size;
+    const cell = size / n;
+    const [r, g, b] = hexToRgb(color || "#000000");
+    doc.setFillColor(r, g, b);
+    for (let row = 0; row < n; row++) {
+      for (let col = 0; col < n; col++) {
+        if (modules.get(row, col)) {
+          doc.rect(x + col * cell, y + row * cell, cell + 0.02, cell + 0.02, "F");
+        }
+      }
+    }
+  } catch {
+    /* ignore */
+  }
+}
 
 export const CARD_DIMS = {
   vertical: { w: 54, h: 86 },
@@ -101,10 +125,14 @@ interface DrawCtx {
   design: CardDesign;
 }
 
-function getValue(student: Student, mapping: ColumnMapping, key: string) {
+function getValue(student: Student, mapping: ColumnMapping, key: string, design?: CardDesign) {
   const col = (mapping as any)[key];
   if (!col) return "";
-  return String(student.row[col] ?? "");
+  let v = String(student.row[col] ?? "");
+  if (DATE_FIELDS.has(key as FieldKey) && design) {
+    v = formatDate(v, design.dateFormat);
+  }
+  return v;
 }
 
 function tryAddImage(doc: jsPDF, dataUrl: string, fmt: "JPEG" | "PNG", x: number, y: number, w: number, h: number) {
@@ -163,7 +191,7 @@ function drawVerticalClassic({ doc, x, y, student, photo, mapping, design }: Dra
   if (photo) tryAddImage(doc, photo.dataUrl, "JPEG", px, py, pw, ph);
 
   // Name
-  const name = getValue(student, mapping, "name") || "—";
+  const name = getValue(student, mapping, "name", design) || "—";
   doc.setTextColor(20);
   doc.setFont("helvetica", "bold");
   doc.setFontSize(9);
@@ -175,7 +203,7 @@ function drawVerticalClassic({ doc, x, y, student, photo, mapping, design }: Dra
   doc.setFontSize(6.2);
   const footerH = 6;
   for (const f of fields) {
-    const v = getValue(student, mapping, f);
+    const v = getValue(student, mapping, f, design);
     if (!v) continue;
     if (fy > y + H - footerH - 4) break;
     doc.setTextColor(120);
@@ -188,7 +216,7 @@ function drawVerticalClassic({ doc, x, y, student, photo, mapping, design }: Dra
   }
 
   // Address
-  const addr = getValue(student, mapping, "address");
+  const addr = getValue(student, mapping, "address", design);
   if (addr && design.visibleFields.includes("address") && fy < y + H - footerH - 5) {
     doc.setFont("helvetica", "normal");
     doc.setTextColor(120);
@@ -278,7 +306,7 @@ function drawHorizontalClassic({ doc, x, y, student, photo, mapping, design }: D
   doc.setTextColor(rgb[0], rgb[1], rgb[2]);
   doc.setFont("helvetica", "bold");
   doc.setFontSize(9);
-  const name = getValue(student, mapping, "name") || "—";
+  const name = getValue(student, mapping, "name", design) || "—";
   safeText(doc, name, fx, fy, fmaxW, { lineHeight: 3.6, maxLines: 1 });
   fy += 4.5;
   doc.setDrawColor(rgb[0], rgb[1], rgb[2]);
@@ -289,7 +317,7 @@ function drawHorizontalClassic({ doc, x, y, student, photo, mapping, design }: D
   const fields = design.visibleFields.filter((f) => f !== "name");
   const labelW = 18;
   for (const f of fields) {
-    const v = getValue(student, mapping, f);
+    const v = getValue(student, mapping, f, design);
     if (!v) continue;
     if (fy > y + H - 7) break;
     doc.setTextColor(110);
@@ -343,7 +371,7 @@ function drawVerticalModern({ doc, x, y, student, photo, mapping, design }: Draw
   doc.rect(px, py, pw, ph, "S");
 
   // Name
-  const name = getValue(student, mapping, "name") || "—";
+  const name = getValue(student, mapping, "name", design) || "—";
   doc.setTextColor(20);
   doc.setFont("helvetica", "bold");
   doc.setFontSize(9.5);
@@ -354,7 +382,7 @@ function drawVerticalModern({ doc, x, y, student, photo, mapping, design }: Draw
   const fields = design.visibleFields.filter((f) => f !== "name");
   doc.setFontSize(6);
   for (const f of fields) {
-    const v = getValue(student, mapping, f);
+    const v = getValue(student, mapping, f, design);
     if (!v) continue;
     if (fy > y + H - 6) break;
     doc.setTextColor(140);
@@ -419,7 +447,7 @@ function drawHorizontalModern({ doc, x, y, student, photo, mapping, design }: Dr
   doc.setTextColor(20);
   doc.setFont("helvetica", "bold");
   doc.setFontSize(10);
-  const name = getValue(student, mapping, "name") || "—";
+  const name = getValue(student, mapping, "name", design) || "—";
   safeText(doc, name, fx, py + 3.5, fmaxW, { lineHeight: 3.6, maxLines: 1 });
   doc.setFont("helvetica", "normal");
   doc.setFontSize(5.5);
@@ -431,7 +459,7 @@ function drawHorizontalModern({ doc, x, y, student, photo, mapping, design }: Dr
   doc.setFontSize(6);
   const fields = design.visibleFields.filter((f) => f !== "name");
   for (const f of fields) {
-    const v = getValue(student, mapping, f);
+    const v = getValue(student, mapping, f, design);
     if (!v) continue;
     if (fy > y + H - 4) break;
     doc.setTextColor(120);
@@ -490,12 +518,92 @@ function drawCustomTemplate({ doc, x, y, student, photo, mapping, design }: Draw
       continue;
     }
 
+    // line
+    if (el.kind === "line") {
+      const t = Math.max(0.1, el.thickness ?? 0.4);
+      const [r, g, b] = hexToRgb(el.color || "#111111");
+      doc.setDrawColor(r, g, b);
+      doc.setLineWidth(t);
+      const isVertical = el.h > el.w;
+      if (isVertical) {
+        const cx = ex + el.w / 2;
+        doc.line(cx, ey, cx, ey + el.h);
+      } else {
+        const cy = ey + el.h / 2;
+        doc.line(ex, cy, ex + el.w, cy);
+      }
+      continue;
+    }
+
+    // rectangle
+    if (el.kind === "rect") {
+      const fill = el.fillColor && el.fillColor !== "none" ? hexToRgb(el.fillColor) : null;
+      const border = el.borderColor && el.borderColor !== "none" ? hexToRgb(el.borderColor) : null;
+      if (fill) doc.setFillColor(fill[0], fill[1], fill[2]);
+      if (border) {
+        doc.setDrawColor(border[0], border[1], border[2]);
+        doc.setLineWidth(Math.max(0.05, el.thickness ?? 0.3));
+      }
+      const mode = fill && border ? "FD" : fill ? "F" : border ? "S" : "";
+      if (mode) {
+        const radius = Math.max(0, el.radius ?? 0);
+        if (radius > 0) doc.roundedRect(ex, ey, el.w, el.h, radius, radius, mode);
+        else doc.rect(ex, ey, el.w, el.h, mode);
+      }
+      continue;
+    }
+
+    // divider (line + label)
+    if (el.kind === "divider") {
+      const t = Math.max(0.1, el.thickness ?? 0.3);
+      const [r, g, b] = hexToRgb(el.color || "#111111");
+      doc.setDrawColor(r, g, b);
+      doc.setLineWidth(t);
+      const cy = ey + el.h / 2;
+      const label = el.text || "";
+      if (!label) {
+        doc.line(ex, cy, ex + el.w, cy);
+      } else {
+        doc.setTextColor(r, g, b);
+        const style2: "normal" | "bold" | "italic" | "bolditalic" =
+          el.bold && el.italic ? "bolditalic" : el.bold ? "bold" : el.italic ? "italic" : "normal";
+        doc.setFont(el.fontFamily, style2);
+        doc.setFontSize(el.fontSize);
+        const tw = (doc.getTextWidth(label) as number) + 2;
+        const half = (el.w - tw) / 2;
+        if (half > 1) {
+          doc.line(ex, cy, ex + half, cy);
+          doc.line(ex + el.w - half, cy, ex + el.w, cy);
+        }
+        doc.text(label, ex + el.w / 2, cy + el.fontSize * 0.18, { align: "center" });
+      }
+      continue;
+    }
+
+    // QR code
+    if (el.kind === "qr") {
+      const key = (el.qrSourceField || "admissionNo") as FieldKey;
+      const col = (mapping as any)[key];
+      let v = col ? String(student.row[col] ?? "") : "";
+      if (!v) {
+        const nameCol = (mapping as any).name;
+        const rollCol = (mapping as any).rollNo;
+        v = [nameCol && student.row[nameCol], rollCol && student.row[rollCol]].filter(Boolean).join(" / ");
+      }
+      const size = Math.min(el.w, el.h);
+      drawQrToPdf(doc, v || "ID", ex, ey, size, el.color || "#000000");
+      continue;
+    }
+
     // text or field
     let text = "";
     if (el.kind === "text") text = el.text || "";
     else if (el.kind === "field" && el.field) {
       const col = (mapping as any)[el.field];
-      const v = col ? String(student.row[col] ?? "") : "";
+      let v = col ? String(student.row[col] ?? "") : "";
+      if (DATE_FIELDS.has(el.field)) {
+        v = formatDate(v, el.dateFormat || design.dateFormat);
+      }
       text = (el.labelPrefix || "") + v;
     }
     if (!text) continue;

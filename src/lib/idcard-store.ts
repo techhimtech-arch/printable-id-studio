@@ -43,6 +43,7 @@ const defaultDesign: CardDesign = {
   customHeight: 86,
   customBgDataUrl: null,
   customElements: [],
+  dateFormat: "dd-mmm-yyyy",
 };
 
 export const useIdStore = create<State>((set, get) => ({

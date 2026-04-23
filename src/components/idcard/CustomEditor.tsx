@@ -13,8 +13,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Trash2, Image as ImageIcon, Type, User, Plus, AlignLeft, AlignCenter, AlignRight, Bold, Italic, X } from "lucide-react";
+import { Trash2, Image as ImageIcon, Type, User, Plus, AlignLeft, AlignCenter, AlignRight, Bold, Italic, X, Minus, Square, QrCode, SeparatorHorizontal } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { DATE_FORMAT_OPTIONS, formatDate } from "@/lib/format-date";
 
 /** On-screen scale for the editor — larger than preview so dragging is precise. */
 const PX_PER_MM = 6;
@@ -63,22 +64,30 @@ export default function CustomEditor() {
   };
 
   const addElement = (partial: Partial<CustomElement> & { kind: CustomElement["kind"] }) => {
+    const k = partial.kind;
+    const isShape = k === "line" || k === "rect" || k === "divider" || k === "qr";
     const el: CustomElement = {
       id: `el_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
-      kind: partial.kind,
+      kind: k,
       field: partial.field,
-      text: partial.text ?? "",
+      text: partial.text ?? (k === "divider" ? "INFO" : ""),
       labelPrefix: partial.labelPrefix ?? "",
+      dateFormat: partial.dateFormat,
       x: partial.x ?? design.customWidth / 2 - 10,
       y: partial.y ?? design.customHeight / 2 - 5,
-      w: partial.w ?? (partial.kind === "photo" ? 24 : 30),
-      h: partial.h ?? (partial.kind === "photo" ? 28 : 5),
-      fontSize: partial.fontSize ?? 9,
+      w: partial.w ?? (k === "photo" ? 24 : k === "qr" ? 14 : k === "line" ? 30 : k === "rect" ? 30 : 30),
+      h: partial.h ?? (k === "photo" ? 28 : k === "qr" ? 14 : k === "line" ? 0.6 : k === "rect" ? 12 : k === "divider" ? 4 : 5),
+      fontSize: partial.fontSize ?? (k === "divider" ? 6 : 9),
       fontFamily: partial.fontFamily ?? "helvetica",
       bold: partial.bold ?? (partial.field === "name"),
       italic: partial.italic ?? false,
       color: partial.color ?? "#111111",
       align: partial.align ?? "left",
+      thickness: partial.thickness ?? (k === "line" || k === "divider" ? 0.4 : k === "rect" ? 0.3 : undefined),
+      fillColor: partial.fillColor ?? (k === "rect" ? "none" : undefined),
+      borderColor: partial.borderColor ?? (k === "rect" ? "#111111" : undefined),
+      radius: partial.radius ?? (k === "rect" ? 1 : undefined),
+      qrSourceField: partial.qrSourceField ?? (k === "qr" ? "admissionNo" : undefined),
     };
     addCustomElement(el);
     setSelectedId(el.id);
@@ -226,7 +235,10 @@ export default function CustomEditor() {
     if (el.kind === "text") return el.text || "Text";
     if (el.kind === "field") {
       const col = el.field ? mapping[el.field] : null;
-      const v = col && sample ? sample.row[col] : "";
+      let v = col && sample ? sample.row[col] : "";
+      if (el.field === "dob" && v) {
+        v = formatDate(String(v), el.dateFormat || design.dateFormat);
+      }
       const fallback = el.field ? FIELD_LABELS[el.field] : "Field";
       return (el.labelPrefix || "") + (v || `[${fallback}]`);
     }
@@ -271,8 +283,23 @@ export default function CustomEditor() {
             )}
           </div>
         </div>
+        <div className="space-y-1.5 sm:col-span-2 lg:col-span-4">
+          <Label className="text-xs">Date format (applies to Date of Birth)</Label>
+          <Select
+            value={design.dateFormat}
+            onValueChange={(v) => setDesign({ dateFormat: v as any })}
+          >
+            <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              {DATE_FORMAT_OPTIONS.map((o) => (
+                <SelectItem key={o.value} value={o.value} className="text-xs">
+                  {o.label}{o.value !== "asis" ? ` — ${o.sample}` : ""}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
       </div>
-
       {/* Add element toolbar */}
       <div className="flex flex-wrap gap-2 items-center p-3 bg-muted/30 rounded-lg border">
         <span className="text-xs font-medium text-muted-foreground mr-1">Add:</span>
@@ -308,6 +335,18 @@ export default function CustomEditor() {
         </Button>
         <Button size="sm" variant="outline" onClick={() => addElement({ kind: "signature", w: 24, h: 8 })}>
           <ImageIcon className="h-3.5 w-3.5" /> Signature
+        </Button>
+        <Button size="sm" variant="outline" onClick={() => addElement({ kind: "line", w: 30, h: 0.6 })} title="Horizontal/vertical line">
+          <Minus className="h-3.5 w-3.5" /> Line
+        </Button>
+        <Button size="sm" variant="outline" onClick={() => addElement({ kind: "rect", w: 30, h: 12 })} title="Rectangle / box">
+          <Square className="h-3.5 w-3.5" /> Box
+        </Button>
+        <Button size="sm" variant="outline" onClick={() => addElement({ kind: "divider", text: "INFO", w: 40, h: 4 })} title="Line with label in middle">
+          <SeparatorHorizontal className="h-3.5 w-3.5" /> Divider
+        </Button>
+        <Button size="sm" variant="outline" onClick={() => addElement({ kind: "qr", w: 14, h: 14 })} title="QR code">
+          <QrCode className="h-3.5 w-3.5" /> QR
         </Button>
         <div className="ml-auto flex gap-1.5">
           <Button
@@ -403,6 +442,48 @@ export default function CustomEditor() {
                         Signature
                       </div>
                     )
+                  ) : el.kind === "line" ? (
+                    <div className="w-full h-full flex items-center justify-center pointer-events-none">
+                      <div
+                        style={
+                          el.h > el.w
+                            ? { width: Math.max(1, (el.thickness ?? 0.4) * PX_PER_MM), height: "100%", background: el.color }
+                            : { height: Math.max(1, (el.thickness ?? 0.4) * PX_PER_MM), width: "100%", background: el.color }
+                        }
+                      />
+                    </div>
+                  ) : el.kind === "rect" ? (
+                    <div
+                      className="w-full h-full pointer-events-none"
+                      style={{
+                        background: el.fillColor && el.fillColor !== "none" ? el.fillColor : "transparent",
+                        border:
+                          el.borderColor && el.borderColor !== "none"
+                            ? `${Math.max(1, (el.thickness ?? 0.3) * PX_PER_MM)}px solid ${el.borderColor}`
+                            : "none",
+                        borderRadius: (el.radius ?? 0) * PX_PER_MM,
+                      }}
+                    />
+                  ) : el.kind === "divider" ? (
+                    <div
+                      className="w-full h-full flex items-center pointer-events-none"
+                      style={{
+                        color: el.color,
+                        fontSize: el.fontSize * 1.2,
+                        fontFamily:
+                          el.fontFamily === "times" ? "Georgia, serif" : el.fontFamily === "courier" ? "monospace" : "Helvetica, Arial, sans-serif",
+                        fontWeight: el.bold ? 700 : 400,
+                        gap: 4,
+                      }}
+                    >
+                      <div style={{ flex: 1, height: Math.max(1, (el.thickness ?? 0.3) * PX_PER_MM), background: el.color }} />
+                      {el.text && <span className="px-1 whitespace-nowrap">{el.text}</span>}
+                      <div style={{ flex: 1, height: Math.max(1, (el.thickness ?? 0.3) * PX_PER_MM), background: el.color }} />
+                    </div>
+                  ) : el.kind === "qr" ? (
+                    <div className="w-full h-full bg-muted/30 flex items-center justify-center pointer-events-none text-[8px] text-muted-foreground border border-dashed">
+                      QR
+                    </div>
                   ) : (
                     <div
                       className="w-full h-full flex items-center px-1 pointer-events-none"
@@ -454,9 +535,9 @@ export default function CustomEditor() {
                 </Button>
               </div>
 
-              {selected.kind === "text" && (
+              {(selected.kind === "text" || selected.kind === "divider") && (
                 <div className="space-y-1.5">
-                  <Label className="text-xs">Text</Label>
+                  <Label className="text-xs">{selected.kind === "divider" ? "Label (optional)" : "Text"}</Label>
                   <Input
                     value={selected.text || ""}
                     onChange={(e) => updateCustomElement(selected.id, { text: e.target.value })}
@@ -488,10 +569,127 @@ export default function CustomEditor() {
                       onChange={(e) => updateCustomElement(selected.id, { labelPrefix: e.target.value })}
                     />
                   </div>
+                  {selected.field === "dob" && (
+                    <div className="space-y-1.5">
+                      <Label className="text-xs">Date format (this field)</Label>
+                      <Select
+                        value={selected.dateFormat || design.dateFormat}
+                        onValueChange={(v) => updateCustomElement(selected.id, { dateFormat: v as any })}
+                      >
+                        <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          {DATE_FORMAT_OPTIONS.map((o) => (
+                            <SelectItem key={o.value} value={o.value} className="text-xs">{o.label}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
                 </>
               )}
 
-              {(selected.kind === "field" || selected.kind === "text") && (
+              {selected.kind === "qr" && (
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Encode field</Label>
+                  <Select
+                    value={selected.qrSourceField || "admissionNo"}
+                    onValueChange={(v) => updateCustomElement(selected.id, { qrSourceField: v as FieldKey })}
+                  >
+                    <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {mappedFieldKeys.map((f) => (
+                        <SelectItem key={f} value={f}>{FIELD_LABELS[f]}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-[10px] text-muted-foreground">QR will scan to this field's value for each student.</p>
+                </div>
+              )}
+
+              {(selected.kind === "line" || selected.kind === "divider" || selected.kind === "rect") && (
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Thickness: {(selected.thickness ?? 0.4).toFixed(2)} mm</Label>
+                  <Slider
+                    min={0.1}
+                    max={3}
+                    step={0.1}
+                    value={[selected.thickness ?? 0.4]}
+                    onValueChange={([v]) => updateCustomElement(selected.id, { thickness: v })}
+                  />
+                </div>
+              )}
+
+              {selected.kind === "rect" && (
+                <>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Corner radius: {(selected.radius ?? 0).toFixed(1)} mm</Label>
+                    <Slider
+                      min={0}
+                      max={10}
+                      step={0.5}
+                      value={[selected.radius ?? 0]}
+                      onValueChange={([v]) => updateCustomElement(selected.id, { radius: v })}
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Fill color</Label>
+                    <div className="flex gap-2 items-center">
+                      <input
+                        type="color"
+                        value={selected.fillColor && selected.fillColor !== "none" ? selected.fillColor : "#ffffff"}
+                        onChange={(e) => updateCustomElement(selected.id, { fillColor: e.target.value })}
+                        className="h-8 w-12 rounded border cursor-pointer"
+                      />
+                      <Button
+                        size="sm"
+                        variant={selected.fillColor === "none" ? "default" : "outline"}
+                        onClick={() => updateCustomElement(selected.id, { fillColor: selected.fillColor === "none" ? "#e5e7eb" : "none" })}
+                      >
+                        {selected.fillColor === "none" ? "No fill" : "Remove fill"}
+                      </Button>
+                    </div>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Border color</Label>
+                    <div className="flex gap-2 items-center">
+                      <input
+                        type="color"
+                        value={selected.borderColor && selected.borderColor !== "none" ? selected.borderColor : "#111111"}
+                        onChange={(e) => updateCustomElement(selected.id, { borderColor: e.target.value })}
+                        className="h-8 w-12 rounded border cursor-pointer"
+                      />
+                      <Button
+                        size="sm"
+                        variant={selected.borderColor === "none" ? "default" : "outline"}
+                        onClick={() => updateCustomElement(selected.id, { borderColor: selected.borderColor === "none" ? "#111111" : "none" })}
+                      >
+                        {selected.borderColor === "none" ? "No border" : "Remove border"}
+                      </Button>
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {(selected.kind === "line" || selected.kind === "qr") && (
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Color</Label>
+                  <div className="flex gap-2 items-center">
+                    <input
+                      type="color"
+                      value={selected.color}
+                      onChange={(e) => updateCustomElement(selected.id, { color: e.target.value })}
+                      className="h-8 w-12 rounded border cursor-pointer"
+                    />
+                    <Input
+                      value={selected.color}
+                      onChange={(e) => updateCustomElement(selected.id, { color: e.target.value })}
+                      className="font-mono text-xs"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {(selected.kind === "field" || selected.kind === "text" || selected.kind === "divider") && (
                 <>
                   <div className="space-y-1.5">
                     <Label className="text-xs">Font size: {selected.fontSize}pt</Label>
