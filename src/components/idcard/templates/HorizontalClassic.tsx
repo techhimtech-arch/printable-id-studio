@@ -1,15 +1,30 @@
 import { formatDate } from "@/lib/format-date";
 import type { CardProps } from "../CardPreview";
 import { FIELD_LABELS } from "@/types/idcard";
+import { computeFieldsLayout } from "@/lib/auto-fit";
 
 export default function HorizontalClassic({ student, photo, mapping, design }: CardProps) {
   const name = (mapping.name && student.row[mapping.name]) || "Student Name";
   const fields = design.visibleFields.filter((f) => f !== "name");
+  const addressIncluded = fields.includes("address");
+
+  const W = design.customWidth * 4;
+  const H = design.customHeight * 4;
+
+  // Reserved height: header (~36) + name (~22) + bottom stripe (~14) + paddings (~16)
+  const reserved = 36 + 22 + 14 + 16;
+  const available = Math.max(20, H - reserved);
+  const layout = computeFieldsLayout({
+    fieldsCount: fields.length,
+    availableHeight: available,
+    addressIncluded,
+    unit: "px",
+  });
 
   return (
     <div
       className="relative bg-white rounded-md overflow-hidden border shadow-sm"
-      style={{ width: design.customWidth * 4, height: design.customHeight * 4, color: "#111" }}
+      style={{ width: W, height: H, color: "#111" }}
     >
       {/* header */}
       <div
@@ -25,9 +40,9 @@ export default function HorizontalClassic({ student, photo, mapping, design }: C
         </div>
       </div>
 
-      <div className="flex px-3 py-2 gap-3">
+      <div className="flex px-3 py-2 gap-3 overflow-hidden">
         {/* fields */}
-        <div className="flex-1 min-w-0">
+        <div className="flex-1 min-w-0 overflow-hidden">
           <div
             className="text-[13px] font-bold leading-tight truncate"
             style={{ color: design.accentColor }}
@@ -35,17 +50,33 @@ export default function HorizontalClassic({ student, photo, mapping, design }: C
             {name}
           </div>
           <div className="h-0.5 w-12 mt-0.5 mb-1.5" style={{ background: design.accentColor }} />
-          <div className="space-y-[2px]">
+          <div style={{ display: "flex", flexDirection: "column", gap: layout.gap }}>
             {fields.map((f) => {
               const col = mapping[f];
               if (!col) return null;
               const raw = student.row[col]; const v = f === "dob" ? formatDate(String(raw ?? ""), design.dateFormat) : raw;
               if (!v) return null;
               return (
-                <div key={f} className="grid grid-cols-[60px_8px_1fr] text-[8px] gap-1 items-start">
-                  <span className="text-gray-500">{FIELD_LABELS[f]}</span>
+                <div
+                  key={f}
+                  className="grid grid-cols-[60px_8px_1fr] gap-1 items-start"
+                  style={{ fontSize: layout.fontSize, minHeight: layout.rowHeight }}
+                >
+                  <span className="text-gray-500 truncate" style={{ fontSize: layout.labelSize }}>
+                    {FIELD_LABELS[f]}
+                  </span>
                   <span className="text-gray-400">:</span>
-                  <span className={`font-semibold ${f === "address" ? "line-clamp-2" : "truncate"}`}>{v}</span>
+                  <span
+                    className="font-semibold"
+                    style={{
+                      display: "-webkit-box",
+                      WebkitLineClamp: f === "address" ? layout.maxAddressLines : 1,
+                      WebkitBoxOrient: "vertical",
+                      overflow: "hidden",
+                    }}
+                  >
+                    {v}
+                  </span>
                 </div>
               );
             })}

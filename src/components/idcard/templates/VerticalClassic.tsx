@@ -1,15 +1,27 @@
 import { formatDate } from "@/lib/format-date";
 import type { CardProps } from "../CardPreview";
 import { FIELD_LABELS } from "@/types/idcard";
+import { computeFieldsLayout } from "@/lib/auto-fit";
 
 export default function VerticalClassic({ student, photo, mapping, design }: CardProps) {
   const name = (mapping.name && student.row[mapping.name]) || "Student Name";
   const fields = design.visibleFields.filter((f) => f !== "name" && f !== "address");
   const addr = mapping.address ? student.row[mapping.address] : "";
+  const addressIncluded = !!addr && design.visibleFields.includes("address");
 
   // Scale preview from card mm dims (4 px / mm)
   const W = design.customWidth * 4;
   const H = design.customHeight * 4;
+
+  // Reserved vertical space (header + photo + name + signature + footer + paddings).
+  const reserved = 28 /*header*/ + 112 /*photo*/ + 12 /*name*/ + 4 /*pt*/ + 28 /*sig*/ + 18 /*footer*/ + 16;
+  const available = Math.max(20, H - reserved);
+  const layout = computeFieldsLayout({
+    fieldsCount: fields.length + (addressIncluded ? 1 : 0),
+    availableHeight: available,
+    addressIncluded,
+    unit: "px",
+  });
 
   return (
     <div
@@ -64,23 +76,38 @@ export default function VerticalClassic({ student, photo, mapping, design }: Car
       </div>
 
       {/* Fields */}
-      <div className="px-3 mt-2 space-y-[3px] flex-1">
+      <div className="px-3 mt-2 flex-1 overflow-hidden" style={{ display: "flex", flexDirection: "column", gap: layout.gap }}>
         {fields.map((f) => {
           const col = mapping[f];
           if (!col) return null;
           const raw = student.row[col]; const v = f === "dob" ? formatDate(String(raw ?? ""), design.dateFormat) : raw;
           if (!v) return null;
           return (
-            <div key={f} className="flex items-baseline justify-between gap-2 text-[8.5px]">
-              <span className="text-gray-500 truncate">{FIELD_LABELS[f]}</span>
-              <span className="font-semibold truncate max-w-[110px] text-right">{v}</span>
+            <div
+              key={f}
+              className="flex items-baseline justify-between gap-2"
+              style={{ fontSize: layout.fontSize, minHeight: layout.rowHeight, lineHeight: 1.1 }}
+            >
+              <span className="text-gray-500 truncate" style={{ fontSize: layout.labelSize }}>
+                {FIELD_LABELS[f]}
+              </span>
+              <span className="font-semibold truncate text-right" style={{ maxWidth: "60%" }}>{v}</span>
             </div>
           );
         })}
-        {addr && design.visibleFields.includes("address") && (
-          <div className="text-[7.5px] pt-1 leading-tight">
-            <div className="text-gray-500" style={{ fontSize: 6.5 }}>Address</div>
-            <div className="line-clamp-2">{addr}</div>
+        {addressIncluded && (
+          <div className="leading-tight" style={{ fontSize: layout.fontSize }}>
+            <div className="text-gray-500" style={{ fontSize: layout.labelSize }}>Address</div>
+            <div
+              style={{
+                display: "-webkit-box",
+                WebkitLineClamp: layout.maxAddressLines,
+                WebkitBoxOrient: "vertical",
+                overflow: "hidden",
+              }}
+            >
+              {addr}
+            </div>
           </div>
         )}
       </div>
