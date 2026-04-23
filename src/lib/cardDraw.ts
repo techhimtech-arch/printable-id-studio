@@ -791,7 +791,9 @@ export function drawCutGridLines(
   }
 }
 
-/** Run a draw callback with the canvas rotated 90° around the card center. */
+/** Run a draw callback with the canvas rotated 90° around the card center.
+ *  Uses a single combined CTM (translate(cx,cy) * rotate(90°) * translate(-cx,-cy))
+ *  which equals Matrix(0, 1, -1, 0, cx + cy, cy - cx). */
 export function withRotatedCard(
   doc: jsPDF,
   x: number,
@@ -811,9 +813,10 @@ export function withRotatedCard(
   };
 
   d.advancedAPI(() => {
-    d.setCurrentTransformationMatrix(new d.Matrix(1, 0, 0, 1, cx, cy));
-    d.setCurrentTransformationMatrix(new d.Matrix(0, 1, -1, 0, 0, 0));
-    d.setCurrentTransformationMatrix(new d.Matrix(1, 0, 0, 1, -cx, -cy));
+    // Single CTM: rotate 90° clockwise around (cx, cy).
+    // [ 0  1  cx + cy ]
+    // [-1  0  cy - cx ]
+    d.setCurrentTransformationMatrix(new d.Matrix(0, 1, -1, 0, cx + cy, cy - cx));
     draw(nx, ny, h, w);
   });
 }
