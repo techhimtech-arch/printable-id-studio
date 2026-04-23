@@ -255,34 +255,50 @@ function drawVerticalClassic({ doc, x, y, student, photo, mapping, design }: Dra
   doc.setFontSize(9);
   safeText(doc, name, x + W / 2, py + ph + 4.5, W - 4, { align: "center", maxLines: 1 });
 
-  // Fields
-  let fy = py + ph + 8.5;
+  // Fields — auto-fit
   const fields = design.visibleFields.filter((f) => f !== "name" && f !== "address");
-  doc.setFontSize(6.2);
+  const addr = getValue(student, mapping, "address", design);
+  const addressIncluded = !!addr && design.visibleFields.includes("address");
   const footerH = 6;
+  const sigReserve = (design.signatureDataUrl || design.principalName) ? 11 : 2;
+  const fieldsTop = py + ph + 7;
+  const fieldsBottom = y + H - footerH - sigReserve;
+  const available = Math.max(4, fieldsBottom - fieldsTop);
+  const layout = computeFieldsLayout({
+    fieldsCount: fields.length + (addressIncluded ? 1 : 0),
+    availableHeight: available,
+    addressIncluded,
+    unit: "mm",
+  });
+
+  let fy = fieldsTop + layout.fontSize * 0.6;
+  doc.setFontSize(layout.fontSize);
   for (const f of fields) {
     const v = getValue(student, mapping, f, design);
     if (!v) continue;
-    if (fy > y + H - footerH - 4) break;
     doc.setTextColor(120);
     doc.setFont("helvetica", "normal");
+    doc.setFontSize(layout.labelSize);
     doc.text(FIELD_LABELS[f], x + 3, fy);
     doc.setTextColor(25);
     doc.setFont("helvetica", "bold");
+    doc.setFontSize(layout.fontSize);
     doc.text(String(v), x + W - 3, fy, { align: "right", maxWidth: W - 22 });
-    fy += 3.4;
+    fy += layout.rowHeight;
   }
 
   // Address
-  const addr = getValue(student, mapping, "address", design);
-  if (addr && design.visibleFields.includes("address") && fy < y + H - footerH - 5) {
+  if (addressIncluded && fy < fieldsBottom) {
     doc.setFont("helvetica", "normal");
     doc.setTextColor(120);
-    doc.setFontSize(5.5);
+    doc.setFontSize(layout.labelSize);
     doc.text("Address", x + 3, fy);
     doc.setTextColor(40);
-    doc.setFontSize(5.8);
-    safeText(doc, addr, x + 3, fy + 2.4, W - 6, { lineHeight: 2.4, maxLines: 2 });
+    doc.setFontSize(layout.fontSize);
+    safeText(doc, addr, x + 3, fy + layout.labelSize * 0.45, W - 6, {
+      lineHeight: layout.fontSize * 0.42,
+      maxLines: layout.maxAddressLines,
+    });
   }
 
   // Signature row above footer
