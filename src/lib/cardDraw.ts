@@ -1,6 +1,30 @@
 import type jsPDF from "jspdf";
-import type { CardDesign, ColumnMapping, PhotoFile, Student } from "@/types/idcard";
+import QRCode from "qrcode";
+import type { CardDesign, ColumnMapping, PhotoFile, Student, CustomElement, FieldKey } from "@/types/idcard";
 import { FIELD_LABELS } from "@/types/idcard";
+import { formatDate } from "@/lib/format-date";
+
+const DATE_FIELDS = new Set<FieldKey>(["dob"]);
+
+function drawQrToPdf(doc: jsPDF, value: string, x: number, y: number, size: number, color: string) {
+  try {
+    const qr = QRCode.create(value || " ", { errorCorrectionLevel: "M" });
+    const modules = qr.modules;
+    const n = modules.size;
+    const cell = size / n;
+    const [r, g, b] = hexToRgb(color || "#000000");
+    doc.setFillColor(r, g, b);
+    for (let row = 0; row < n; row++) {
+      for (let col = 0; col < n; col++) {
+        if (modules.get(row, col)) {
+          doc.rect(x + col * cell, y + row * cell, cell + 0.02, cell + 0.02, "F");
+        }
+      }
+    }
+  } catch {
+    /* ignore */
+  }
+}
 
 export const CARD_DIMS = {
   vertical: { w: 54, h: 86 },
