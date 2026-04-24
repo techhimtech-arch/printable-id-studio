@@ -446,8 +446,8 @@ export default function CustomEditor() {
 
   const selected = design.customElements.find((e) => e.id === selectedId) || null;
 
-  return (
-    <div className="space-y-4">
+  const editorBody = (
+    <div className={cn("space-y-4", fullscreen && "h-full flex flex-col")}>
       {/* Card size + background */}
       <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3 p-4 bg-muted/30 rounded-lg border">
         <div className="space-y-1.5">
