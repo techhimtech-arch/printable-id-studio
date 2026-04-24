@@ -13,7 +13,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Trash2, Image as ImageIcon, Type, User, Plus, AlignLeft, AlignCenter, AlignRight, Bold, Italic, X, Minus, Square, QrCode, SeparatorHorizontal, Eraser, Wand2, RotateCcw } from "lucide-react";
+import { Trash2, Image as ImageIcon, Type, User, Plus, AlignLeft, AlignCenter, AlignRight, Bold, Italic, X, Minus, Square, QrCode, SeparatorHorizontal, Eraser, Wand2, RotateCcw, Maximize2, Minimize2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { DATE_FORMAT_OPTIONS, formatDate } from "@/lib/format-date";
 import { eraseRectsFromImage } from "@/lib/bg-eraser";
