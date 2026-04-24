@@ -49,6 +49,18 @@ export default function CustomEditor() {
   const [eraseDraw, setEraseDraw] = useState<{ x: number; y: number; w: number; h: number } | null>(null);
   const eraseStartRef = useRef<{ x: number; y: number } | null>(null);
   const originalBgRef = useRef<string | null>(null);
+  const [fullscreen, setFullscreen] = useState(false);
+  const PX_PER_MM = fullscreen ? PX_PER_MM_FULL : PX_PER_MM_NORMAL;
+
+  // Lock body scroll while fullscreen so the editor truly takes over the viewport
+  useEffect(() => {
+    if (!fullscreen) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, [fullscreen]);
 
   /** Snap threshold in mm. */
   const SNAP_MM = 1.2;
