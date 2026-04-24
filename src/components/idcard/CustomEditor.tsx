@@ -796,7 +796,7 @@ export default function CustomEditor() {
         </div>
 
         {/* Inspector */}
-        <div className="bg-card border rounded-lg p-4 space-y-3 h-fit">
+        <div className={cn("bg-card border rounded-lg p-4 space-y-3", fullscreen ? "lg:max-h-full lg:overflow-auto" : "h-fit")}>
           {!selected ? (
             <div className="text-xs text-muted-foreground">
               Click any element on the card to edit its style. Drag to move, drag corner to resize.
