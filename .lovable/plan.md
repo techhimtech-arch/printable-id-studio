@@ -1,80 +1,104 @@
+## Goal
 
+App ko **offline-capable + auto-save** banana — taki:
+- Internet na ho tab bhi app chale (PWA, installable)
+- Browser refresh / tab close hone pe bhi kaam na khoye (IndexedDB auto-save)
+- Project file export/import kar sakein (cross-device backup)
 
-## Scope (existing ko disturb nahi karunga)
+## Scope
 
-`CustomEditor.tsx` mein already snap, grid, alignment guides, aur mapped-fields detection sab kuch hai. Bas 2 chhote upgrades chahiye + 1 helper text.
+Sirf **2 cheezein** is round mein — clean aur focused:
 
-## Changes
+### A. PWA (installable + offline)
+### B. Auto-save with IndexedDB
 
-### 1. `src/components/idcard/CustomEditor.tsx` — "Add all mapped fields" button
+Baaki advanced features (QR, double-side, etc.) baad mein.
 
-Existing "Add element toolbar" mein ek naya button:
+---
 
-- **"Auto-add all fields"** — ek click pe:
-  - `mappedFieldKeys` (already computed) pe loop
-  - Har field ke liye ek `kind: "field"` element add — left column mein neatly stacked grid mein (e.g. x=4mm, y starts at 30mm, row gap 6mm)
-  - Naam pehle, bold, slightly bigger; baaki fields chhote
-  - Agar `photo` mapped hai toh ek photo box bhi add (top-right area)
-- Button disabled jab koi field mapped na ho, with tooltip
-- Toast: "Added N fields — drag karke arrange karo"
+## A. PWA Setup
 
-Bahar koi state/structure change nahi — sirf existing `addElement()` ko loop mein call karega.
+### Files
 
-### 2. `src/lib/bg-eraser.ts` — naya canvas-based erase helper
+| File | Change |
+|---|---|
+| `vite.config.ts` | Add `vite-plugin-pwa` with safe config |
+| `index.html` | PWA meta tags (theme-color, apple-touch-icon) |
+| `public/manifest.webmanifest` | App manifest |
+| `public/icon-192.png`, `icon-512.png` | Generated PWA icons (ID card themed) |
+| `src/main.tsx` | SW registration **guarded** — disabled in iframes/preview |
+| `src/components/InstallPWA.tsx` | **New** — small "Install app" button (shows only when `beforeinstallprompt` fires) |
 
-Naya file with one exported function:
+### Critical safety (Lovable preview ke liye)
 
-```ts
-eraseRectsFromImage(dataUrl: string, rectsMm: {x,y,w,h}[], cardWmm, cardHmm): Promise<string>
-```
+- `devOptions: { enabled: false }` — SW sirf production mein chalega
+- `registerType: "autoUpdate"` + `NetworkFirst` for HTML
+- Iframe / `id-preview--*` / `lovableproject.com` host pe SW register **nahi** hoga
+- Matlab: editor preview mein PWA inactive, **published URL pe active**
 
-- Image ko offscreen canvas pe load
-- Diye gaye mm rectangles ko white (ya transparent) se fill
-- Updated PNG data URL return
+### User-facing
 
-Pure utility — koi UI side-effect nahi.
+- Browser pe "Install" prompt (Chrome/Edge address bar mein bhi)
+- Mobile pe "Add to Home Screen" — standalone app jaise chalega
+- Offline mein cached assets se app open hoga
 
-### 3. `src/components/idcard/CustomEditor.tsx` — eraser mode UI
+⚠️ **Note**: PWA features sirf published version (`printable-id-studio.lovable.app`) pe test honge, editor preview mein nahi.
 
-Existing canvas pe ek toggle add:
+---
 
-- Toolbar mein **"Erase"** button (next to Snap/Grid)
-- Erase mode ON hone par:
-  - Cursor crosshair
-  - Mouse drag se canvas pe ek rectangle draw (overlay div, semi-transparent red)
-  - Mouse up pe `eraseRectsFromImage()` call → naya `customBgDataUrl` set
-  - Element drag/select disabled jab tak erase mode ON ho
-- "Reset background" button — original BG restore karne ke liye (ek `originalBgDataUrl` ref mein store)
-- Erase mode OFF karne pe normal element editing wapas
+## B. Auto-save with IndexedDB
 
-State additions: `eraseMode: boolean`, `eraseDraw: {x,y,w,h} | null`, `originalBgRef = useRef<string|null>`.
+### Why IndexedDB (not localStorage)?
 
-### 4. `src/components/idcard/StepDesign.tsx` — helper text
+- localStorage limit ~5MB → photos save hi nahi honge (ek photo 200KB+)
+- IndexedDB ~50MB+ easily → 100+ photos store ho jayenge
+- `idb-keyval` library (~600 bytes) — super lightweight wrapper
 
-`<CustomEditor />` render hone se thoda upar (jab template === "custom") ek chhota info banner:
+### Files
 
-> 💡 **Tip:** Apni finished card design (Photoshop/Canva se exported PNG/JPG) yahan **background** ke roop mein upload karo. Phir **"Auto-add all fields"** click karo — saare mapped Excel fields ek saath aa jayenge. Drag karke jagah set karo, aur Excel ke har student ke liye PDF mein same design use hogi.
+| File | Change |
+|---|---|
+| `package.json` | Add `idb-keyval` |
+| `src/lib/persistence.ts` | **New** — `saveState`, `loadState`, `clearState`, `exportProject`, `importProject` |
+| `src/lib/idcard-store.ts` | Subscribe to changes → debounced (500ms) IndexedDB write |
+| `src/App.tsx` ya `Index.tsx` | App load pe IndexedDB se restore + toast "Previous session restored" |
+| `src/components/idcard/Stepper.tsx` | "✓ Saved" indicator + "Clear saved data" option |
+| `src/components/idcard/StepUpload.tsx` | "Resume previous project" card (agar saved data hai) |
+| `src/components/idcard/StepExport.tsx` | "Export project (.json)" + "Import project (.json)" buttons |
 
-Sirf ek `<div>` block — already-existing CustomEditor invocation aur baaki kuch nahi badlega.
+### What gets saved
 
-## Files to update
+Sab kuch — `headers`, `rows`, `mapping`, `students`, `photos` (base64 dataURLs), `design` (with custom bg + elements), `step`.
 
-- `src/components/idcard/CustomEditor.tsx` — Auto-add button, Erase toggle + draw overlay, eraser integration
-- `src/lib/bg-eraser.ts` — naya canvas-based erase utility (new file)
-- `src/components/idcard/StepDesign.tsx` — chhota tip banner upar Custom editor ke
+### UX flow
 
-## Kya nahi karunga
+1. User Excel upload karta hai → background mein auto-save
+2. Tab band, kal phir khole → toast: "Previous session restored — 247 students loaded"
+3. Header mein chhota indicator: `✓ Saved` (green dot)
+4. Sidebar mein "Start over" already hai → ye IndexedDB bhi clear karega
+5. Bonus: "Export project" se `.json` file mil jaye → dusre device pe "Import" karke same project khol sakte hain
 
-- Snap-to-grid / alignment guides — already exist karte hain, dubara nahi banaunga
-- Existing element types ya layout logic ko touch nahi karunga
-- Excel mapping / export pipeline ko nahi chhedunga
-- Built-in templates ko bilkul nahi disturb karunga
+### Storage usage indicator (chhota touch)
+
+Stepper ke neeche: `Storage: 12 MB used` (via `navigator.storage.estimate()`)
+
+---
 
 ## Result
 
-1. Background image upload karo
-2. Erase tool se purane name/photo blocks white kar do (Photoshop ki zarurat nahi)
-3. "Auto-add all fields" click — saare fields aa gaye
-4. Drag karke jagah set karo (one-time, ~5 min)
-5. Export — saare students ke cards ek hi design ke saath ban jayenge
+- ✅ App installable (mobile + desktop)
+- ✅ Offline kaam karta hai
+- ✅ Refresh/crash pe data safe
+- ✅ Project file backup/share kar sakte hain
+- ✅ Existing flow bilkul same — sirf neeche persistence layer add hoga
 
+## Out of scope (next round ke liye)
+
+- QR/Barcode elements
+- Double-sided cards
+- Bleed/safe zone guides
+- Undo/Redo
+
+---
+
+**Ready to build?** Implement karte hi PWA test karne ke liye published URL pe deploy karna hoga (preview mein PWA off rahega — ye intentional hai).
