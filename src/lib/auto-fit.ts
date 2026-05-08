@@ -31,8 +31,8 @@ export function computeFieldsLayout(input: FieldsLayoutInput): FieldsLayout {
   // Base sizes in the chosen unit.
   const base =
     unit === "px"
-      ? { fontMax: 9, fontMin: 6, rowMax: 14, rowMin: 9, gap: 2, labelDelta: 1 }
-      : { fontMax: 6.5, fontMin: 4.4, rowMax: 3.6, rowMin: 2.4, gap: 0.6, labelDelta: 0.4 };
+      ? { fontMax: 10, fontMin: 7, rowMax: 15, rowMin: 10, gap: 2, labelDelta: 0 }
+      : { fontMax: 7, fontMin: 5, rowMax: 3.8, rowMin: 2.6, gap: 0.6, labelDelta: 0 };
 
   // First pass: assume address gets 2 lines.
   let addressLines = addressIncluded ? 2 : 0;

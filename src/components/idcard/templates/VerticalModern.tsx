@@ -67,7 +67,7 @@ export default function VerticalModern({ student, photo, mapping, design }: Card
               className="flex justify-between gap-2 border-b border-gray-100"
               style={{ fontSize: layout.fontSize, minHeight: layout.rowHeight, paddingBottom: 1 }}
             >
-              <span className="text-gray-400 uppercase tracking-wide" style={{ fontSize: layout.labelSize }}>
+              <span className="text-gray-700 font-bold uppercase tracking-wide" style={{ fontSize: layout.labelSize }}>
                 {FIELD_LABELS[f]}
               </span>
               <span

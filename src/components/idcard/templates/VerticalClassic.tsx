@@ -88,7 +88,7 @@ export default function VerticalClassic({ student, photo, mapping, design }: Car
               className="flex items-baseline justify-between gap-2"
               style={{ fontSize: layout.fontSize, minHeight: layout.rowHeight, lineHeight: 1.1 }}
             >
-              <span className="text-gray-500 truncate" style={{ fontSize: layout.labelSize }}>
+              <span className="text-gray-700 font-bold uppercase truncate" style={{ fontSize: layout.labelSize }}>
                 {FIELD_LABELS[f]}
               </span>
               <span className="font-semibold truncate text-right" style={{ maxWidth: "60%" }}>{v}</span>
@@ -97,7 +97,7 @@ export default function VerticalClassic({ student, photo, mapping, design }: Car
         })}
         {addressIncluded && (
           <div className="leading-tight" style={{ fontSize: layout.fontSize }}>
-            <div className="text-gray-500" style={{ fontSize: layout.labelSize }}>Address</div>
+            <div className="text-gray-700 font-bold uppercase" style={{ fontSize: layout.labelSize }}>Address</div>
             <div
               style={{
                 display: "-webkit-box",

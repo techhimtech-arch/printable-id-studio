@@ -276,10 +276,10 @@ function drawVerticalClassic({ doc, x, y, student, photo, mapping, design }: Dra
   for (const f of fields) {
     const v = getValue(student, mapping, f, design);
     if (!v) continue;
-    doc.setTextColor(120);
-    doc.setFont("helvetica", "normal");
+    doc.setTextColor(60);
+    doc.setFont("helvetica", "bold");
     doc.setFontSize(layout.labelSize);
-    doc.text(FIELD_LABELS[f], x + 3, fy);
+    doc.text(FIELD_LABELS[f].toUpperCase(), x + 3, fy);
     doc.setTextColor(25);
     doc.setFont("helvetica", "bold");
     doc.setFontSize(layout.fontSize);
@@ -289,10 +289,10 @@ function drawVerticalClassic({ doc, x, y, student, photo, mapping, design }: Dra
 
   // Address
   if (addressIncluded && fy < fieldsBottom) {
-    doc.setFont("helvetica", "normal");
-    doc.setTextColor(120);
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(60);
     doc.setFontSize(layout.labelSize);
-    doc.text("Address", x + 3, fy);
+    doc.text("ADDRESS", x + 3, fy);
     doc.setTextColor(40);
     doc.setFontSize(layout.fontSize);
     safeText(doc, addr, x + 3, fy + layout.labelSize * 0.45, W - 6, {
@@ -414,10 +414,10 @@ function drawHorizontalClassic({ doc, x, y, student, photo, mapping, design }: D
   for (const f of fields) {
     const v = getValue(student, mapping, f, design);
     if (!v) continue;
-    doc.setTextColor(110);
-    doc.setFont("helvetica", "normal");
+    doc.setTextColor(60);
+    doc.setFont("helvetica", "bold");
     doc.setFontSize(layout.labelSize);
-    doc.text(FIELD_LABELS[f], fx, fy);
+    doc.text(FIELD_LABELS[f].toUpperCase(), fx, fy);
     doc.setTextColor(35);
     doc.setFont("helvetica", "bold");
     doc.setFontSize(layout.fontSize);
@@ -489,8 +489,8 @@ function drawVerticalModern({ doc, x, y, student, photo, mapping, design }: Draw
   for (const f of fields) {
     const v = getValue(student, mapping, f, design);
     if (!v) continue;
-    doc.setTextColor(140);
-    doc.setFont("helvetica", "normal");
+    doc.setTextColor(60);
+    doc.setFont("helvetica", "bold");
     doc.setFontSize(layout.labelSize);
     doc.text(FIELD_LABELS[f].toUpperCase(), x + 3, fy);
     doc.setTextColor(30);
@@ -590,10 +590,10 @@ function drawHorizontalModern({ doc, x, y, student, photo, mapping, design }: Dr
   for (const f of fields) {
     const v = getValue(student, mapping, f, design);
     if (!v) continue;
-    doc.setTextColor(120);
-    doc.setFont("helvetica", "normal");
+    doc.setTextColor(60);
+    doc.setFont("helvetica", "bold");
     doc.setFontSize(layout.labelSize);
-    doc.text(FIELD_LABELS[f], fx, fy);
+    doc.text(FIELD_LABELS[f].toUpperCase(), fx, fy);
     doc.setTextColor(30);
     doc.setFont("helvetica", "bold");
     doc.setFontSize(layout.fontSize);

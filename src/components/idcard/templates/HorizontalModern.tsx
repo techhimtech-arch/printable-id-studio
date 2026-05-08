@@ -71,7 +71,7 @@ export default function HorizontalModern({ student, photo, mapping, design }: Ca
                   className="flex justify-between gap-2"
                   style={{ fontSize: layout.fontSize, minHeight: layout.rowHeight }}
                 >
-                  <span className="text-gray-500 truncate" style={{ fontSize: layout.labelSize }}>
+                  <span className="text-gray-700 font-bold uppercase truncate" style={{ fontSize: layout.labelSize }}>
                     {FIELD_LABELS[f]}
                   </span>
                   <span
