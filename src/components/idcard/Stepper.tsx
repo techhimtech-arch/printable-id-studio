@@ -1,10 +1,11 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useIdStore } from "@/lib/idcard-store";
-import { Check, FileSpreadsheet, Columns3, Users, Palette, FileDown, IdCard, RotateCcw } from "lucide-react";
+import { Check, FileSpreadsheet, Columns3, Users, Palette, FileDown, IdCard, RotateCcw, FileJson, Upload } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import InstallPWA from "@/components/InstallPWA";
-import { getStorageEstimate } from "@/lib/persistence";
+import { getStorageEstimate, exportProject, importProject } from "@/lib/persistence";
+import { toast } from "@/hooks/use-toast";
 
 const STEPS = [
   { label: "Upload", icon: FileSpreadsheet },
