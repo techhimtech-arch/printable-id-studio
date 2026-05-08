@@ -89,6 +89,45 @@ export default function Stepper() {
             Storage: {storage.usageMB} MB used
           </div>
         )}
+        <div className="flex gap-1.5">
+          <Button
+            variant="outline"
+            size="sm"
+            className="flex-1 px-2"
+            disabled={rows.length === 0}
+            onClick={() => exportProject({ step, headers, rows, mapping, photos, students, design })}
+            title="Export project as .json backup"
+          >
+            <FileJson className="h-3.5 w-3.5" /> Backup
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            className="flex-1 px-2"
+            onClick={() => fileRef.current?.click()}
+            title="Import project from .json"
+          >
+            <Upload className="h-3.5 w-3.5" /> Restore
+          </Button>
+        </div>
+        <input
+          ref={fileRef}
+          type="file"
+          accept="application/json,.json"
+          className="hidden"
+          onChange={async (e) => {
+            const f = e.target.files?.[0];
+            if (!f) return;
+            try {
+              const s = await importProject(f);
+              hydrate(s);
+              toast({ title: "Project restored", description: `${s.rows.length} students loaded.` });
+            } catch {
+              toast({ title: "Invalid file", description: "Could not read the project file." });
+            }
+            e.target.value = "";
+          }}
+        />
         <InstallPWA />
         <Button variant="ghost" size="sm" onClick={reset} className="w-full justify-start text-muted-foreground">
           <RotateCcw className="h-3.5 w-3.5" /> Start over
