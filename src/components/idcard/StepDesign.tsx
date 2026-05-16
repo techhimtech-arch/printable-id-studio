@@ -4,7 +4,7 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
-import { ArrowLeft, ArrowRight, Upload, X, Wand2 } from "lucide-react";
+import { ArrowLeft, ArrowRight, Upload, X, Wand2, Download } from "lucide-react";
 import { FIELD_LABELS, type CardTemplate, type FieldKey } from "@/types/idcard";
 import { cn } from "@/lib/utils";
 import CustomEditor from "./CustomEditor";
@@ -171,11 +171,60 @@ export default function StepDesign() {
     toast.success("Template converted to editable layout. Drag any element to customize.");
   };
 
+  const exportDesign = () => {
+    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(design, null, 2));
+    const dlAnchorElem = document.createElement("a");
+    dlAnchorElem.setAttribute("href", dataStr);
+    dlAnchorElem.setAttribute("download", "id_card_design.json");
+    dlAnchorElem.click();
+    toast.success("Design exported successfully");
+  };
+
+  const importDesign = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const importedDesign = JSON.parse(event.target?.result as string);
+        if (importedDesign && typeof importedDesign === "object") {
+          setDesign(importedDesign);
+          toast.success("Design imported successfully");
+        } else {
+          toast.error("Invalid design format");
+        }
+      } catch (error) {
+        toast.error("Failed to parse design file");
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = "";
+  };
+
   return (
     <div className="space-y-8 max-w-3xl">
-      <div>
-        <h2 className="text-2xl font-semibold tracking-tight">Card design</h2>
-        <p className="text-muted-foreground mt-1">Pick a template and configure your school branding.</p>
+      <div className="flex items-center justify-between flex-wrap gap-4">
+        <div>
+          <h2 className="text-2xl font-semibold tracking-tight">Card design</h2>
+          <p className="text-muted-foreground mt-1">Pick a template and configure your school branding.</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" onClick={exportDesign}>
+            <Download className="h-4 w-4 mr-2" /> Export
+          </Button>
+          <div className="relative">
+            <input 
+              type="file" 
+              accept=".json" 
+              onChange={importDesign} 
+              className="absolute inset-0 opacity-0 w-full cursor-pointer" 
+              title="Import Design"
+            />
+            <Button variant="outline" size="sm" className="pointer-events-none">
+              <Upload className="h-4 w-4 mr-2" /> Import
+            </Button>
+          </div>
+        </div>
       </div>
 
       {/* Template picker */}
