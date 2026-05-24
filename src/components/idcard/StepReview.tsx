@@ -3,14 +3,16 @@ import { useIdStore } from "@/lib/idcard-store";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { ArrowLeft, ArrowRight, Crop, ImageOff, RefreshCw } from "lucide-react";
+import { ArrowLeft, ArrowRight, Crop, ImageOff, Pencil, RefreshCw } from "lucide-react";
 import CropDialog from "./CropDialog";
+import EditDataDialog from "./EditDataDialog";
 
 const NONE = "__none__";
 
 export default function StepReview() {
   const { students, photos, mapping, assignPhoto, updatePhoto, setStep, buildStudents } = useIdStore();
   const [cropPhotoId, setCropPhotoId] = useState<string | null>(null);
+  const [editOpen, setEditOpen] = useState(false);
 
   const photoMap = useMemo(() => Object.fromEntries(photos.map((p) => [p.id, p])), [photos]);
   const assignedIds = useMemo(() => new Set(students.map((s) => s.photoId).filter(Boolean) as string[]), [students]);
@@ -27,9 +29,14 @@ export default function StepReview() {
             Photos are mapped sequentially. Reassign or crop as needed.
           </p>
         </div>
-        <Button variant="outline" size="sm" onClick={buildStudents}>
-          <RefreshCw className="h-4 w-4" /> Re-map sequentially
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm" onClick={() => setEditOpen(true)}>
+            <Pencil className="h-4 w-4" /> Edit data
+          </Button>
+          <Button variant="outline" size="sm" onClick={buildStudents}>
+            <RefreshCw className="h-4 w-4" /> Re-map sequentially
+          </Button>
+        </div>
       </div>
 
       <div className="grid lg:grid-cols-[1fr_240px] gap-6">
@@ -127,6 +134,8 @@ export default function StepReview() {
         onClose={() => setCropPhotoId(null)}
         onSave={(dataUrl) => cropPhoto && updatePhoto(cropPhoto.id, dataUrl)}
       />
+
+      <EditDataDialog open={editOpen} onClose={() => setEditOpen(false)} />
     </div>
   );
 }
