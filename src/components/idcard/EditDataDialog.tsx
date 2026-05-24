@@ -7,7 +7,14 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Label } from "@/components/ui/label";
 import { ArrowLeft, Pencil, Search } from "lucide-react";
 import { useIdStore } from "@/lib/idcard-store";
+import { parseLoose } from "@/lib/format-date";
 import { toast } from "sonner";
+
+const pad2 = (n: number) => String(n).padStart(2, "0");
+const toISODate = (input: string): string => {
+  const p = parseLoose(input);
+  return p ? `${p.y}-${pad2(p.m)}-${pad2(p.d)}` : "";
+};
 
 interface Props {
   open: boolean;
