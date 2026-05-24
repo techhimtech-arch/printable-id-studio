@@ -68,8 +68,8 @@ export default function EditDataDialog({ open, onClose }: Props) {
 
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
-      <DialogContent className="max-w-2xl max-h-[85vh] flex flex-col">
-        <DialogHeader>
+      <DialogContent className="w-[95vw] sm:max-w-2xl max-h-[90dvh] flex flex-col overflow-hidden p-0 gap-0">
+        <DialogHeader className="px-4 sm:px-6 pt-4 sm:pt-6 pb-2 shrink-0">
           <DialogTitle className="flex items-center gap-2">
             {selectedIndex !== null && (
               <Button
@@ -87,16 +87,18 @@ export default function EditDataDialog({ open, onClose }: Props) {
 
         {selectedIndex === null ? (
           <>
-            <div className="relative">
-              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Search by name, roll, anything…"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="pl-8"
-              />
+            <div className="px-4 sm:px-6 pb-2 shrink-0">
+              <div className="relative">
+                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search by name, roll, anything…"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  className="pl-8"
+                />
+              </div>
             </div>
-            <ScrollArea className="flex-1 -mx-6 px-6">
+            <ScrollArea className="flex-1 min-h-0 px-4 sm:px-6 pb-4 sm:pb-6">
               <div className="space-y-1 py-2">
                 {filtered.length === 0 && (
                   <p className="text-sm text-muted-foreground py-8 text-center">No matches.</p>
@@ -128,28 +130,37 @@ export default function EditDataDialog({ open, onClose }: Props) {
           </>
         ) : (
           <>
-            <ScrollArea className="flex-1 -mx-6 px-6">
+            <ScrollArea className="flex-1 min-h-0 px-4 sm:px-6">
               <div className="space-y-3 py-2">
-                {headers.map((h) => (
-                  <div key={h} className="space-y-1.5">
-                    <Label className="text-xs">{labelFor(h)}</Label>
-                    {isLongField(h) ? (
-                      <Textarea
-                        value={draft[h] ?? ""}
-                        onChange={(e) => setDraft({ ...draft, [h]: e.target.value })}
-                        rows={2}
-                      />
-                    ) : (
-                      <Input
-                        value={draft[h] ?? ""}
-                        onChange={(e) => setDraft({ ...draft, [h]: e.target.value })}
-                      />
-                    )}
-                  </div>
-                ))}
+                {headers.map((h) => {
+                  const isDob = mapping.dob === h;
+                  return (
+                    <div key={h} className="space-y-1.5">
+                      <Label className="text-xs">{labelFor(h)}</Label>
+                      {isDob ? (
+                        <Input
+                          type="date"
+                          value={toISODate(draft[h] ?? "")}
+                          onChange={(e) => setDraft({ ...draft, [h]: e.target.value })}
+                        />
+                      ) : isLongField(h) ? (
+                        <Textarea
+                          value={draft[h] ?? ""}
+                          onChange={(e) => setDraft({ ...draft, [h]: e.target.value })}
+                          rows={2}
+                        />
+                      ) : (
+                        <Input
+                          value={draft[h] ?? ""}
+                          onChange={(e) => setDraft({ ...draft, [h]: e.target.value })}
+                        />
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             </ScrollArea>
-            <div className="flex justify-end gap-2 pt-2 border-t">
+            <div className="flex justify-end gap-2 px-4 sm:px-6 py-3 border-t shrink-0">
               <Button variant="outline" onClick={() => setSelectedIndex(null)}>
                 Cancel
               </Button>
