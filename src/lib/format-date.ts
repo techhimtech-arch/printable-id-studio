@@ -9,7 +9,7 @@ export type DateFormat =
 const MONTHS_SHORT = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
 /** Try to parse many common date strings into {y,m,d}. Returns null on failure. */
-function parseLoose(input: string): { y: number; m: number; d: number } | null {
+export function parseLoose(input: string): { y: number; m: number; d: number } | null {
   const s = String(input || "").trim();
   if (!s) return null;
 
